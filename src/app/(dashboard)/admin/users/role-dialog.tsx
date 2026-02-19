@@ -23,7 +23,7 @@ import { assignRole, removeRole } from "@/app/actions/roles";
 import { toast } from "sonner";
 import type { AppRole } from "@/lib/types";
 
-const ROLES: AppRole[] = ["admin", "bridge_manager", "report_manager", "viewer"];
+const ROLES: AppRole[] = ["admin", "bridge_manager", "viewer"];
 
 export function RoleDialog({
   userId,

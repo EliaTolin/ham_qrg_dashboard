@@ -36,7 +36,7 @@ const managementNav = [
     title: "Reports",
     href: "/reports",
     icon: Flag,
-    roles: ["admin", "report_manager"] as AppRole[],
+    roles: ["admin", "bridge_manager"] as AppRole[],
   },
 ];
 

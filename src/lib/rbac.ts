@@ -11,8 +11,7 @@ const PERMISSION_MAP: Record<string, AppPermission[]> = {
     "users.manage",
     "sync.trigger",
   ],
-  bridge_manager: ["repeaters.write", "networks.write"],
-  report_manager: ["reports.manage"],
+  bridge_manager: ["repeaters.write", "networks.write", "reports.manage"],
   viewer: [],
 };
 
@@ -21,11 +20,15 @@ export async function getUserRole(): Promise<AppRole> {
   const {
     data: { session },
   } = await supabase.auth.getSession();
-  if (!session) return "viewer";
-  const role = (session.access_token
+  if (!session) {
+    console.log("[DEBUG getUserRole] no session found");
+    return "viewer";
+  }
+  const payload = session.access_token
     ? JSON.parse(atob(session.access_token.split(".")[1]))
-    : {}
-  )?.user_role;
+    : {};
+  console.log("[DEBUG getUserRole] JWT payload user_role:", payload?.user_role);
+  const role = payload?.user_role;
   return (role as AppRole) ?? "viewer";
 }
 

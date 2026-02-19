@@ -28,6 +28,29 @@ const ACCESS_MODES = [
   "WINLINK",
 ];
 
+const REGIONS = [
+  "ABRUZZO",
+  "BASILICATA",
+  "CALABRIA",
+  "CAMPANIA",
+  "EMILIA-ROMAGNA",
+  "FRIULI-VENEZIA GIULIA",
+  "LAZIO",
+  "LIGURIA",
+  "LOMBARDIA",
+  "MARCHE",
+  "MOLISE",
+  "PIEMONTE",
+  "PUGLIA",
+  "SARDEGNA",
+  "SICILIA",
+  "TOSCANA",
+  "TRENTINO-ALTO ADIGE",
+  "UMBRIA",
+  "VALLE D'AOSTA",
+  "VENETO",
+];
+
 export function Filters() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -93,6 +116,23 @@ export function Filters() {
           {ACCESS_MODES.map((mode) => (
             <SelectItem key={mode} value={mode}>
               {mode}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select
+        value={searchParams.get("region") ?? "all"}
+        onValueChange={(value) => updateParams({ region: value })}
+      >
+        <SelectTrigger className="w-52">
+          <SelectValue placeholder="Region" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Regions</SelectItem>
+          {REGIONS.map((region) => (
+            <SelectItem key={region} value={region}>
+              {region}
             </SelectItem>
           ))}
         </SelectContent>

@@ -1,7 +1,11 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { RepeaterDetail } from "./repeater-detail";
-import type { RepeaterAccessWithNetwork } from "@/lib/types";
+import type {
+  RepeaterAccessWithNetwork,
+  RepeaterFeedbackWithRelations,
+  RepeaterReportWithProfile,
+} from "@/lib/types";
 
 export default async function RepeaterDetailPage({
   params,
@@ -15,7 +19,8 @@ export default async function RepeaterDetailPage({
     { data: repeater },
     { data: accessRows },
     { data: feedbackStats },
-    { data: reports },
+    { data: feedbackRows },
+    { data: reportRows },
   ] = await Promise.all([
     supabase.from("repeaters").select("*").eq("id", id).single(),
     supabase
@@ -28,8 +33,13 @@ export default async function RepeaterDetailPage({
       .eq("repeater_id", id)
       .maybeSingle(),
     supabase
+      .from("repeater_feedback")
+      .select("*, profiles(first_name, last_name, callsign), repeater_access(mode, network_id)")
+      .eq("repeater_id", id)
+      .order("created_at", { ascending: false }),
+    supabase
       .from("repeater_reports")
-      .select("*")
+      .select("*, profiles!repeater_reports_profile_fk(first_name, last_name, callsign)")
       .eq("repeater_id", id)
       .order("created_at", { ascending: false }),
   ]);
@@ -43,12 +53,16 @@ export default async function RepeaterDetailPage({
     }
   );
 
+  const feedback = (feedbackRows ?? []) as unknown as RepeaterFeedbackWithRelations[];
+  const reports = (reportRows ?? []) as unknown as RepeaterReportWithProfile[];
+
   return (
     <RepeaterDetail
       repeater={repeater}
       accesses={accesses}
       feedbackStats={feedbackStats}
-      reports={reports ?? []}
+      feedback={feedback}
+      reports={reports}
     />
   );
 }

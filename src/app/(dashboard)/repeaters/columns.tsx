@@ -1,17 +1,15 @@
 "use client";
 
 import type { ColumnDef } from "@tanstack/react-table";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Eye } from "lucide-react";
-import { formatFrequency } from "@/lib/format";
+import { formatFrequency, formatShift } from "@/lib/format";
 import { getModeColor } from "@/lib/mode-colors";
 import type { Repeater, RepeaterAccessWithNetwork } from "@/lib/types";
 
 export type RepeaterRow = {
   repeater: Repeater;
   accesses: RepeaterAccessWithNetwork[];
+  href: string;
 };
 
 export const columns: ColumnDef<RepeaterRow>[] = [
@@ -28,6 +26,11 @@ export const columns: ColumnDef<RepeaterRow>[] = [
     accessorKey: "repeater.frequency_hz",
     header: "Frequency",
     cell: ({ row }) => formatFrequency(row.original.repeater.frequency_hz),
+  },
+  {
+    accessorKey: "repeater.shift_hz",
+    header: "Shift",
+    cell: ({ row }) => formatShift(row.original.repeater.shift_hz),
   },
   {
     accessorKey: "repeater.name",
@@ -66,17 +69,5 @@ export const columns: ColumnDef<RepeaterRow>[] = [
         </div>
       );
     },
-  },
-  {
-    id: "actions",
-    header: "",
-    cell: ({ row }) => (
-      <Button variant="ghost" size="icon" asChild>
-        <Link href={`/repeaters/${row.original.repeater.id}`}>
-          <Eye className="h-4 w-4" />
-          <span className="sr-only">View</span>
-        </Link>
-      </Button>
-    ),
   },
 ];

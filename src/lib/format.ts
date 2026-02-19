@@ -12,5 +12,5 @@ export function formatShift(shiftHz: number | null): string {
 
 export function formatCtcss(hz: number | null): string {
   if (hz == null) return "—";
-  return `${(hz / 10).toFixed(1)} Hz`;
+  return `${hz.toFixed(1)} Hz`;
 }

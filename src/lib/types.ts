@@ -31,3 +31,12 @@ export type SearchRepeaterResult = {
   accesses: RepeaterAccessWithNetwork[];
   rank: number;
 };
+
+export type RepeaterFeedbackWithRelations = RepeaterFeedback & {
+  profiles: Pick<Profile, "first_name" | "last_name" | "callsign"> | null;
+  repeater_access: Pick<RepeaterAccess, "mode" | "network_id"> | null;
+};
+
+export type RepeaterReportWithProfile = RepeaterReport & {
+  profiles: Pick<Profile, "first_name" | "last_name" | "callsign"> | null;
+};

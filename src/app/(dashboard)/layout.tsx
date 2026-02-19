@@ -9,6 +9,7 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const role = await getUserRole();
+  console.log("[DEBUG layout] resolved role:", role);
 
   return (
     <SidebarProvider>

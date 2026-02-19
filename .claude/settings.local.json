@@ -4,7 +4,12 @@
       "Bash(pnpm create:*)",
       "Bash(pnpm dlx shadcn@latest init:*)",
       "Bash(pnpm dlx shadcn@latest add:*)",
-      "Bash(pnpm build:*)"
+      "Bash(pnpm build:*)",
+      "Bash(ls:*)",
+      "Bash(head:*)",
+      "Bash(pnpm dev:*)",
+      "Bash(npx supabase:*)",
+      "Bash(cat:*)"
     ]
   }
 }
