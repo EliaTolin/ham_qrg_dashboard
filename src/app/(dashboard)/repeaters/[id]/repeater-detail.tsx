@@ -7,7 +7,6 @@ import {
   ThumbsDown,
   Radio,
   MessageSquare,
-  AlertTriangle,
   Info,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,12 +16,13 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { formatFrequency, formatShift, formatCtcss } from "@/lib/format";
+import { formatCtcss } from "@/lib/format";
 import { getModeColor } from "@/lib/mode-colors";
+import { RepeaterAlerts } from "./repeater-alerts";
+import { RepeaterEditForm } from "./repeater-edit-form";
 import type {
   Repeater,
   RepeaterAccessWithNetwork,
@@ -30,13 +30,6 @@ import type {
   RepeaterFeedbackWithRelations,
   RepeaterReportWithProfile,
 } from "@/lib/types";
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-yellow-100 text-yellow-800",
-  reviewed: "bg-blue-100 text-blue-800",
-  resolved: "bg-green-100 text-green-800",
-  rejected: "bg-red-100 text-red-800",
-};
 
 const STATION_LABELS: Record<string, string> = {
   portable: "Portable",
@@ -47,10 +40,10 @@ const STATION_LABELS: Record<string, string> = {
 function formatUserName(
   profile: { first_name: string | null; last_name: string | null; callsign: string | null } | null
 ): string {
-  if (!profile) return "Unknown";
+  if (!profile) return "Sconosciuto";
   if (profile.callsign) return profile.callsign;
   const name = [profile.first_name, profile.last_name].filter(Boolean).join(" ");
-  return name || "Unknown";
+  return name || "Sconosciuto";
 }
 
 function formatDate(dateStr: string): string {
@@ -63,21 +56,14 @@ function formatDate(dateStr: string): string {
   });
 }
 
-function InfoItem({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div>
-      <dt className="text-sm font-medium text-muted-foreground">{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
-}
-
 interface RepeaterDetailProps {
   repeater: Repeater;
   accesses: RepeaterAccessWithNetwork[];
   feedbackStats: FeedbackStats | null;
   feedback: RepeaterFeedbackWithRelations[];
   reports: RepeaterReportWithProfile[];
+  canEdit: boolean;
+  canManageReports: boolean;
 }
 
 export function RepeaterDetail({
@@ -86,6 +72,8 @@ export function RepeaterDetail({
   feedbackStats,
   feedback,
   reports,
+  canEdit,
+  canManageReports,
 }: RepeaterDetailProps) {
   // Group feedback by access ID
   const feedbackByAccess = new Map<string, RepeaterFeedbackWithRelations[]>();
@@ -128,77 +116,35 @@ export function RepeaterDetail({
         </div>
       </div>
 
+      {/* Report alerts banner */}
+      <RepeaterAlerts reports={reports} canManage={canManageReports} />
+
       <Tabs defaultValue="general">
         <TabsList>
           <TabsTrigger value="general" className="gap-1.5">
             <Info className="h-4 w-4" />
-            General
+            Generale
           </TabsTrigger>
           <TabsTrigger value="access" className="gap-1.5">
             <Radio className="h-4 w-4" />
-            Access ({accesses.length})
+            Accessi ({accesses.length})
           </TabsTrigger>
           <TabsTrigger value="feedback" className="gap-1.5">
             <MessageSquare className="h-4 w-4" />
             Feedback ({feedback.length})
           </TabsTrigger>
-          <TabsTrigger value="reports" className="gap-1.5">
-            <AlertTriangle className="h-4 w-4" />
-            Reports ({reports.length})
-          </TabsTrigger>
         </TabsList>
 
         {/* Tab: General */}
         <TabsContent value="general" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Repeater Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                <InfoItem label="Callsign" value={<span className="font-mono">{repeater.callsign ?? "—"}</span>} />
-                <InfoItem label="Frequency" value={formatFrequency(repeater.frequency_hz)} />
-                <InfoItem label="Shift" value={formatShift(repeater.shift_hz)} />
-                <InfoItem label="Locality" value={repeater.locality ?? "—"} />
-                <InfoItem label="Region" value={repeater.region ?? "—"} />
-                <InfoItem label="Province" value={repeater.province_code ?? "—"} />
-                <InfoItem label="Locator" value={<span className="font-mono">{repeater.locator ?? "—"}</span>} />
-                <InfoItem label="Manager" value={repeater.manager ?? "—"} />
-                {repeater.lat != null && repeater.lon != null && (
-                  <InfoItem
-                    label="Coordinates"
-                    value={
-                      <span className="font-mono text-sm">
-                        {repeater.lat.toFixed(5)}, {repeater.lon.toFixed(5)}
-                      </span>
-                    }
-                  />
-                )}
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Metadata</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-                <InfoItem label="Source" value={repeater.source} />
-                <InfoItem label="External ID" value={<span className="font-mono text-sm">{repeater.external_id ?? "—"}</span>} />
-                <InfoItem label="Last Seen" value={repeater.last_seen_at ? formatDate(repeater.last_seen_at) : "—"} />
-                <InfoItem label="Created" value={formatDate(repeater.created_at)} />
-                <InfoItem label="Updated" value={formatDate(repeater.updated_at)} />
-              </dl>
-            </CardContent>
-          </Card>
+          <RepeaterEditForm repeater={repeater} canEdit={canEdit} />
         </TabsContent>
 
         {/* Tab: Access Methods */}
         <TabsContent value="access" className="space-y-4">
           {accesses.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No access methods registered.
+              Nessun metodo di accesso registrato.
             </p>
           )}
           {accesses.map((access) => {
@@ -266,7 +212,7 @@ export function RepeaterDetail({
                     )}
                     {access.notes && (
                       <div className="col-span-full">
-                        <dt className="text-muted-foreground">Notes</dt>
+                        <dt className="text-muted-foreground">Note</dt>
                         <dd>{access.notes}</dd>
                       </div>
                     )}
@@ -338,7 +284,7 @@ export function RepeaterDetail({
         <TabsContent value="feedback" className="space-y-3">
           {feedback.length === 0 && (
             <p className="text-sm text-muted-foreground">
-              No feedback for this repeater.
+              Nessun feedback per questo ripetitore.
             </p>
           )}
           {feedback.map((fb) => (
@@ -375,42 +321,6 @@ export function RepeaterDetail({
                     </p>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </TabsContent>
-
-        {/* Tab: Reports */}
-        <TabsContent value="reports" className="space-y-3">
-          {reports.length === 0 && (
-            <p className="text-sm text-muted-foreground">
-              No reports for this repeater.
-            </p>
-          )}
-          {reports.map((report) => (
-            <Card key={report.id}>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Badge className={STATUS_COLORS[report.status]}>
-                      {report.status}
-                    </Badge>
-                    <span className="text-sm text-muted-foreground">
-                      by {formatUserName(report.profiles)}
-                    </span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDate(report.created_at)}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm">{report.description}</p>
-                {report.updated_at !== report.created_at && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Updated: {formatDate(report.updated_at)}
-                  </p>
-                )}
               </CardContent>
             </Card>
           ))}

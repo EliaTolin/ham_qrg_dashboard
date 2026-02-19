@@ -65,7 +65,7 @@ export function LoginForm() {
             <p className="text-sm text-destructive">{error}</p>
           )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="pt-2">
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
           </Button>

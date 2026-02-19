@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { hasPermission } from "@/lib/rbac";
 import { RepeaterDetail } from "./repeater-detail";
 import type {
   RepeaterAccessWithNetwork,
@@ -46,6 +47,11 @@ export default async function RepeaterDetailPage({
 
   if (!repeater) notFound();
 
+  const [canEdit, canManageReports] = await Promise.all([
+    hasPermission("repeaters.write"),
+    hasPermission("reports.manage"),
+  ]);
+
   const accesses: RepeaterAccessWithNetwork[] = (accessRows ?? []).map(
     (a) => {
       const { networks, ...access } = a;
@@ -63,6 +69,8 @@ export default async function RepeaterDetailPage({
       feedbackStats={feedbackStats}
       feedback={feedback}
       reports={reports}
+      canEdit={canEdit}
+      canManageReports={canManageReports}
     />
   );
 }

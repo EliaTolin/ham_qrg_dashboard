@@ -9,7 +9,15 @@
       "Bash(head:*)",
       "Bash(pnpm dev:*)",
       "Bash(npx supabase:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(pnpm add:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(npx shadcn@latest add:*)"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

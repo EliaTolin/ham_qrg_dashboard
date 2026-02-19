@@ -14,11 +14,11 @@ import {
 import { ReportFilters } from "./report-filters";
 import type { ReportStatus } from "@/lib/types";
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  reviewed: "secondary",
-  resolved: "default",
-  rejected: "destructive",
+const STATUS_CLASSES: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700",
+  reviewed: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700",
+  resolved: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700",
+  rejected: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700",
 };
 
 export default async function ReportsPage({
@@ -45,8 +45,22 @@ export default async function ReportsPage({
     query = query.eq("status", params.status as ReportStatus);
   }
 
-  const { data: reports, error } = await query;
-  console.log("[DEBUG reports]", { count: reports?.length, error });
+  const { data: rawReports, error } = await query;
+  console.log("[DEBUG reports]", { count: rawReports?.length, error });
+
+  const STATUS_ORDER: Record<string, number> = {
+    pending: 0,
+    reviewed: 1,
+    resolved: 2,
+    rejected: 3,
+  };
+
+  const reports = rawReports?.slice().sort((a, b) => {
+    const sa = STATUS_ORDER[a.status] ?? 9;
+    const sb = STATUS_ORDER[b.status] ?? 9;
+    if (sa !== sb) return sa - sb;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
 
   return (
     <div className="space-y-4">
@@ -81,10 +95,10 @@ export default async function ReportsPage({
                 <TableRow key={report.id} className="group relative cursor-pointer">
                   <TableCell className="font-mono font-medium">
                     <Link
-                      href={`/reports/${report.id}`}
+                      href={rep ? `/repeaters/${rep.id}` : `/reports/${report.id}`}
                       className="absolute inset-0"
                     >
-                      <span className="sr-only">Apri report</span>
+                      <span className="sr-only">Vai al ripetitore</span>
                     </Link>
                     {rep?.callsign ?? rep?.name ?? "—"}
                   </TableCell>
@@ -98,12 +112,12 @@ export default async function ReportsPage({
                         .join(" ") || "—")}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={STATUS_VARIANT[report.status] ?? "outline"}>
+                    <Badge variant="outline" className={STATUS_CLASSES[report.status]}>
                       {report.status}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-muted-foreground">
-                    {new Date(report.created_at).toLocaleDateString()}
+                    {new Date(report.created_at).toLocaleDateString("it-IT")}
                   </TableCell>
                 </TableRow>
               );

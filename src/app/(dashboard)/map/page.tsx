@@ -1,22 +1,57 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Map } from "lucide-react";
+import { createClient } from "@/lib/supabase/server";
+import { MapFilters } from "./map-filters";
+import { MapWrapper } from "./map-wrapper";
+import type { Repeater, RepeaterAccessWithNetwork } from "@/lib/types";
 
-export default function MapPage() {
+interface RepeaterMapItem {
+  repeater: Repeater;
+  accesses: RepeaterAccessWithNetwork[];
+}
+
+// Italy bounding box
+const ITALY_BOUNDS = {
+  p_lat1: 35.5,
+  p_lon1: 6.5,
+  p_lat2: 47.5,
+  p_lon2: 19.0,
+};
+
+export default async function MapPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ mode?: string }>;
+}) {
+  const params = await searchParams;
+  const supabase = await createClient();
+
+  const rpcParams: Record<string, unknown> = { ...ITALY_BOUNDS };
+  const activeMode = params.mode && params.mode !== "all" ? params.mode : null;
+  if (activeMode) {
+    rpcParams.p_access_modes = [activeMode];
+  }
+
+  const { data } = await supabase.rpc(
+    "repeaters_in_bounds",
+    rpcParams as never
+  );
+
+  const repeaters: RepeaterMapItem[] = (data ?? []).map(
+    (item: { repeater: Repeater; accesses: unknown }) => ({
+      repeater: item.repeater,
+      accesses:
+        (item.accesses as unknown as RepeaterAccessWithNetwork[]) ?? [],
+    })
+  );
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Map className="h-5 w-5" />
-          Repeater Map
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex h-96 items-center justify-center rounded-lg border-2 border-dashed">
-          <p className="text-muted-foreground">
-            Map visualization coming soon
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="flex h-[calc(100vh-5rem)] flex-col gap-4">
+      <MapFilters />
+      <div className="min-h-0 flex-1 overflow-hidden rounded-lg border">
+        <MapWrapper
+          initialRepeaters={repeaters}
+          accessModes={activeMode ? [activeMode] : undefined}
+        />
+      </div>
+    </div>
   );
 }

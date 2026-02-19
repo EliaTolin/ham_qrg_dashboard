@@ -16,11 +16,11 @@ import { ReportStatusSelect } from "../report-status-select";
 import { formatFrequency } from "@/lib/format";
 import type { RepeaterReport, Repeater, Profile, ReportStatus } from "@/lib/types";
 
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-  pending: "outline",
-  reviewed: "secondary",
-  resolved: "default",
-  rejected: "destructive",
+const STATUS_CLASSES: Record<string, string> = {
+  pending: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700",
+  reviewed: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700",
+  resolved: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400 dark:border-green-700",
+  rejected: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400 dark:border-red-700",
 };
 
 interface ReportDetailProps {
@@ -52,7 +52,7 @@ export function ReportDetail({
         </Button>
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-bold">Report #{report.id.slice(0, 8)}</h1>
-          <Badge variant={STATUS_VARIANT[report.status] ?? "outline"}>
+          <Badge variant="outline" className={STATUS_CLASSES[report.status]}>
             {report.status}
           </Badge>
         </div>
@@ -125,11 +125,11 @@ export function ReportDetail({
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">Creato il</p>
-              <p className="mt-0.5">{new Date(report.created_at).toLocaleString()}</p>
+              <p className="mt-0.5">{new Date(report.created_at).toLocaleString("it-IT")}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">Aggiornato il</p>
-              <p className="mt-0.5">{new Date(report.updated_at).toLocaleString()}</p>
+              <p className="mt-0.5">{new Date(report.updated_at).toLocaleString("it-IT")}</p>
             </div>
           </div>
 
