@@ -28,29 +28,6 @@ const ACCESS_MODES = [
   "WINLINK",
 ];
 
-const REGIONS = [
-  "ABRUZZO",
-  "BASILICATA",
-  "CALABRIA",
-  "CAMPANIA",
-  "EMILIA-ROMAGNA",
-  "FRIULI-VENEZIA GIULIA",
-  "LAZIO",
-  "LIGURIA",
-  "LOMBARDIA",
-  "MARCHE",
-  "MOLISE",
-  "PIEMONTE",
-  "PUGLIA",
-  "SARDEGNA",
-  "SICILIA",
-  "TOSCANA",
-  "TRENTINO-ALTO ADIGE",
-  "UMBRIA",
-  "VALLE D'AOSTA",
-  "VENETO",
-];
-
 export function Filters() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -84,8 +61,7 @@ export function Filters() {
 
   const hasFilters =
     searchParams.has("q") ||
-    searchParams.has("mode") ||
-    searchParams.has("region");
+    searchParams.has("mode");
 
   return (
     <div className="flex flex-wrap items-center gap-3">
@@ -93,14 +69,14 @@ export function Filters() {
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search repeaters..."
+            placeholder="Cerca per callsign, nome, frequenza, localita'..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="w-64 pl-9"
+            className="w-80 pl-9"
           />
         </div>
         <Button type="submit" variant="secondary" size="sm">
-          Search
+          Cerca
         </Button>
       </form>
 
@@ -112,7 +88,7 @@ export function Filters() {
           <SelectValue placeholder="Access Mode" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All Modes</SelectItem>
+          <SelectItem value="all">Tutti i modi</SelectItem>
           {ACCESS_MODES.map((mode) => (
             <SelectItem key={mode} value={mode}>
               {mode}
@@ -121,27 +97,10 @@ export function Filters() {
         </SelectContent>
       </Select>
 
-      <Select
-        value={searchParams.get("region") ?? "all"}
-        onValueChange={(value) => updateParams({ region: value })}
-      >
-        <SelectTrigger className="w-52">
-          <SelectValue placeholder="Region" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Regions</SelectItem>
-          {REGIONS.map((region) => (
-            <SelectItem key={region} value={region}>
-              {region}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
       {hasFilters && (
         <Button variant="ghost" size="sm" onClick={clearFilters}>
           <X className="mr-1 h-4 w-4" />
-          Clear
+          Pulisci
         </Button>
       )}
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
   ThumbsUp,
@@ -8,6 +9,9 @@ import {
   Radio,
   MessageSquare,
   Info,
+  Plus,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,14 +25,18 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatCtcss } from "@/lib/format";
 import { getModeColor } from "@/lib/mode-colors";
+import { toast } from "sonner";
 import { RepeaterAlerts } from "./repeater-alerts";
 import { RepeaterEditForm } from "./repeater-edit-form";
+import { AccessDialog } from "./access-dialog";
+import { deleteAccess } from "@/app/actions/repeaters";
 import type {
   Repeater,
   RepeaterAccessWithNetwork,
   FeedbackStats,
   RepeaterFeedbackWithRelations,
   RepeaterReportWithProfile,
+  Network,
 } from "@/lib/types";
 
 const STATION_LABELS: Record<string, string> = {
@@ -64,6 +72,7 @@ interface RepeaterDetailProps {
   reports: RepeaterReportWithProfile[];
   canEdit: boolean;
   canManageReports: boolean;
+  networks: Network[];
 }
 
 export function RepeaterDetail({
@@ -74,7 +83,9 @@ export function RepeaterDetail({
   reports,
   canEdit,
   canManageReports,
+  networks,
 }: RepeaterDetailProps) {
+  const router = useRouter();
   // Group feedback by access ID
   const feedbackByAccess = new Map<string, RepeaterFeedbackWithRelations[]>();
   for (const fb of feedback) {
@@ -142,6 +153,20 @@ export function RepeaterDetail({
 
         {/* Tab: Access Methods */}
         <TabsContent value="access" className="space-y-4">
+          {canEdit && (
+            <div className="flex justify-end">
+              <AccessDialog
+                repeaterId={repeater.id}
+                networks={networks}
+                trigger={
+                  <Button size="sm">
+                    <Plus className="mr-2 h-3.5 w-3.5" />
+                    Aggiungi accesso
+                  </Button>
+                }
+              />
+            </div>
+          )}
           {accesses.length === 0 && (
             <p className="text-sm text-muted-foreground">
               Nessun metodo di accesso registrato.
@@ -163,6 +188,37 @@ export function RepeaterDetail({
                           <span className="ml-1 text-xs">({access.network.kind})</span>
                         )}
                       </CardDescription>
+                    )}
+                    {canEdit && (
+                      <div className="ml-auto flex items-center gap-1">
+                        <AccessDialog
+                          repeaterId={repeater.id}
+                          access={access}
+                          networks={networks}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={async () => {
+                            if (!confirm("Eliminare questo accesso?")) return;
+                            const result = await deleteAccess(access.id);
+                            if (result.error) {
+                              toast.error(result.error);
+                            } else {
+                              toast.success("Accesso eliminato");
+                              router.refresh();
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </CardHeader>

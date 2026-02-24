@@ -10,6 +10,7 @@ import {
   Map,
   Users,
   RefreshCw,
+  BarChart3,
 } from "lucide-react";
 import {
   Sidebar,
@@ -29,6 +30,7 @@ const mainNav = [
   { title: "Repeaters", href: "/repeaters", icon: Radio },
   { title: "Networks", href: "/networks", icon: Network },
   { title: "Map", href: "/map", icon: Map },
+  { title: "Stats", href: "/stats", icon: BarChart3 },
 ];
 
 const managementNav = [

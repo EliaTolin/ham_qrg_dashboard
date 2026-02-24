@@ -1,16 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { isAdmin } from "@/lib/rbac";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { RoleDialog } from "./role-dialog";
+import { UsersTable, type UserRow } from "./users-table";
 
 export default async function UsersPage() {
   const admin = await isAdmin();
@@ -18,83 +10,41 @@ export default async function UsersPage() {
 
   const supabase = await createClient();
 
-  const { data: profiles } = await supabase
-    .from("profiles")
-    .select("*")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
-
-  const { data: userRoles } = await supabase.from("user_roles").select("*");
+  const [{ data: profiles }, { data: userRoles }] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("*")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase.from("user_roles").select("*"),
+  ]);
 
   const rolesMap = new Map<string, string>();
   userRoles?.forEach((ur) => {
     rolesMap.set(ur.user_id, ur.role);
   });
 
-  return (
-    <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Email / Callsign</TableHead>
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {profiles?.map((profile) => {
-              const currentRole = rolesMap.get(profile.id) ?? "viewer";
-              return (
-                <TableRow key={profile.id}>
-                  <TableCell>
-                    <span className="font-mono">
-                      {profile.callsign ?? profile.id.slice(0, 8)}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    {[profile.first_name, profile.last_name]
-                      .filter(Boolean)
-                      .join(" ") || "—"}
-                  </TableCell>
-                  <TableCell>
-                    {profile.user_type ? (
-                      <Badge variant="outline">{profile.user_type}</Badge>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{currentRole}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <RoleDialog
-                      userId={profile.id}
-                      currentRole={currentRole}
-                      userName={
-                        profile.callsign ??
-                        [profile.first_name, profile.last_name]
-                          .filter(Boolean)
-                          .join(" ") ??
-                        "User"
-                      }
-                    />
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-            {(!profiles || profiles.length === 0) && (
-              <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  No users found.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-    </div>
-  );
+  // Fetch emails from auth.users via admin client
+  const emailMap = new Map<string, string>();
+  try {
+    const adminClient = createAdminClient();
+    const { data } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+    data?.users?.forEach((u) => {
+      if (u.email) emailMap.set(u.id, u.email);
+    });
+  } catch {
+    // Service role key not available — emails won't be shown
+  }
+
+  const users: UserRow[] = (profiles ?? []).map((profile) => ({
+    id: profile.id,
+    callsign: profile.callsign,
+    first_name: profile.first_name,
+    last_name: profile.last_name,
+    user_type: profile.user_type,
+    email: emailMap.get(profile.id) ?? null,
+    role: rolesMap.get(profile.id) ?? "viewer",
+  }));
+
+  return <UsersTable users={users} />;
 }

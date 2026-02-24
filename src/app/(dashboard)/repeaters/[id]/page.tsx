@@ -6,6 +6,7 @@ import type {
   RepeaterAccessWithNetwork,
   RepeaterFeedbackWithRelations,
   RepeaterReportWithProfile,
+  Network,
 } from "@/lib/types";
 
 export default async function RepeaterDetailPage({
@@ -22,6 +23,7 @@ export default async function RepeaterDetailPage({
     { data: feedbackStats },
     { data: feedbackRows },
     { data: reportRows },
+    { data: networkRows },
   ] = await Promise.all([
     supabase.from("repeaters").select("*").eq("id", id).single(),
     supabase
@@ -43,6 +45,10 @@ export default async function RepeaterDetailPage({
       .select("*, profiles!repeater_reports_profile_fk(first_name, last_name, callsign)")
       .eq("repeater_id", id)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("networks")
+      .select("*")
+      .order("name"),
   ]);
 
   if (!repeater) notFound();
@@ -61,6 +67,7 @@ export default async function RepeaterDetailPage({
 
   const feedback = (feedbackRows ?? []) as unknown as RepeaterFeedbackWithRelations[];
   const reports = (reportRows ?? []) as unknown as RepeaterReportWithProfile[];
+  const networks = (networkRows ?? []) as Network[];
 
   return (
     <RepeaterDetail
@@ -71,6 +78,7 @@ export default async function RepeaterDetailPage({
       reports={reports}
       canEdit={canEdit}
       canManageReports={canManageReports}
+      networks={networks}
     />
   );
 }

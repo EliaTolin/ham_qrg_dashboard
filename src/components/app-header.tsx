@@ -13,6 +13,7 @@ const breadcrumbMap: Record<string, string> = {
   "/networks": "Networks",
   "/reports": "Reports",
   "/map": "Map",
+  "/stats": "Stats",
   "/admin/users": "Users & Roles",
   "/admin/sync": "Sync Runs",
 };
