@@ -20,19 +20,19 @@ export default async function ReportDetailPage({
   const { data: report } = await supabase
     .from("repeater_reports")
     .select(
-      "*, repeaters(id, callsign, name, frequency_hz, locality, external_id), profiles!repeater_reports_profile_fk(first_name, last_name, callsign)"
+      "*, repeaters(*), profiles!repeater_reports_profile_fk(first_name, last_name, callsign)"
     )
     .eq("id", id)
     .single();
 
   if (!report) notFound();
 
-  const canManage = await hasPermission("reports.manage");
+  const [canManage, canEdit] = await Promise.all([
+    hasPermission("reports.manage"),
+    hasPermission("repeaters.write"),
+  ]);
 
-  const repeater = report.repeaters as unknown as Pick<
-    Repeater,
-    "id" | "callsign" | "name" | "frequency_hz" | "locality" | "external_id"
-  > | null;
+  const repeater = report.repeaters as unknown as Repeater | null;
 
   const reporter = report.profiles as unknown as Pick<
     Profile,
@@ -45,6 +45,7 @@ export default async function ReportDetailPage({
       repeater={repeater}
       reporter={reporter}
       canManage={canManage}
+      canEdit={canEdit}
     />
   );
 }

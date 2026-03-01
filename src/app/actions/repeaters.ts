@@ -14,7 +14,11 @@ export interface UpdateRepeaterFields {
   region?: string | null;
   province_code?: string | null;
   locator?: string | null;
+  lat?: number | null;
+  lon?: number | null;
 }
+
+const LOCATOR_RE = /^[A-R]{2}[0-9]{2}([A-X]{2})?$/i;
 
 export async function updateRepeater(
   repeaterId: string,
@@ -27,6 +31,33 @@ export async function updateRepeater(
 
   if (fields.frequency_hz != null && fields.frequency_hz <= 0) {
     return { error: "La frequenza deve essere maggiore di 0" };
+  }
+
+  if (fields.lat != null && (fields.lat < -90 || fields.lat > 90)) {
+    return { error: "La latitudine deve essere compresa tra -90 e 90" };
+  }
+
+  if (fields.lon != null && (fields.lon < -180 || fields.lon > 180)) {
+    return { error: "La longitudine deve essere compresa tra -180 e 180" };
+  }
+
+  if (
+    fields.locator != null &&
+    fields.locator !== "" &&
+    !LOCATOR_RE.test(fields.locator)
+  ) {
+    return {
+      error:
+        "Locator non valido. Formato Maidenhead: 2 lettere (A-R) + 2 cifre + opzionalmente 2 lettere (A-X)",
+    };
+  }
+
+  if (
+    fields.province_code != null &&
+    fields.province_code !== "" &&
+    !/^[A-Z]{2}$/.test(fields.province_code)
+  ) {
+    return { error: "Il codice provincia deve essere di 2 lettere maiuscole" };
   }
 
   const supabase = await createClient();

@@ -70,6 +70,12 @@ export function RepeaterEditForm({ repeater, canEdit }: RepeaterEditFormProps) {
     repeater.province_code ?? ""
   );
   const [locator, setLocator] = useState(repeater.locator ?? "");
+  const [lat, setLat] = useState(
+    repeater.lat != null ? String(repeater.lat) : ""
+  );
+  const [lon, setLon] = useState(
+    repeater.lon != null ? String(repeater.lon) : ""
+  );
 
   function resetForm() {
     setCallsign(repeater.callsign ?? "");
@@ -83,6 +89,8 @@ export function RepeaterEditForm({ repeater, canEdit }: RepeaterEditFormProps) {
     setRegion(repeater.region ?? "");
     setProvinceCode(repeater.province_code ?? "");
     setLocator(repeater.locator ?? "");
+    setLat(repeater.lat != null ? String(repeater.lat) : "");
+    setLon(repeater.lon != null ? String(repeater.lon) : "");
   }
 
   function handleCancel() {
@@ -97,6 +105,48 @@ export function RepeaterEditForm({ repeater, canEdit }: RepeaterEditFormProps) {
       return;
     }
 
+    if (shiftHz.trim() && isNaN(parseFloat(shiftHz))) {
+      toast.error("Lo shift deve essere un numero valido");
+      return;
+    }
+
+    const locatorTrimmed = locator.trim().toUpperCase();
+    if (locatorTrimmed && !/^[A-R]{2}[0-9]{2}([A-X]{2})?$/.test(locatorTrimmed)) {
+      toast.error(
+        "Locator non valido. Formato Maidenhead: 2 lettere (A-R) + 2 cifre + opzionalmente 2 lettere (A-X)"
+      );
+      return;
+    }
+
+    const pcTrimmed = provinceCode.trim().toUpperCase();
+    if (pcTrimmed && !/^[A-Z]{2}$/.test(pcTrimmed)) {
+      toast.error("Il codice provincia deve essere di 2 lettere");
+      return;
+    }
+
+    let parsedLat: number | null = null;
+    if (lat.trim()) {
+      parsedLat = parseFloat(lat);
+      if (isNaN(parsedLat) || parsedLat < -90 || parsedLat > 90) {
+        toast.error("La latitudine deve essere un numero tra -90 e 90");
+        return;
+      }
+    }
+
+    let parsedLon: number | null = null;
+    if (lon.trim()) {
+      parsedLon = parseFloat(lon);
+      if (isNaN(parsedLon) || parsedLon < -180 || parsedLon > 180) {
+        toast.error("La longitudine deve essere un numero tra -180 e 180");
+        return;
+      }
+    }
+
+    if ((parsedLat != null) !== (parsedLon != null)) {
+      toast.error("Latitudine e longitudine devono essere entrambe valorizzate o entrambe vuote");
+      return;
+    }
+
     const fields: UpdateRepeaterFields = {
       callsign: callsign.trim() || null,
       name: name.trim() || null,
@@ -107,8 +157,10 @@ export function RepeaterEditForm({ repeater, canEdit }: RepeaterEditFormProps) {
         : null,
       locality: locality.trim() || null,
       region: region.trim() || null,
-      province_code: provinceCode.trim() || null,
-      locator: locator.trim() || null,
+      province_code: pcTrimmed || null,
+      locator: locatorTrimmed || null,
+      lat: parsedLat,
+      lon: parsedLon,
     };
 
     setSaving(true);
@@ -323,6 +375,33 @@ export function RepeaterEditForm({ repeater, canEdit }: RepeaterEditFormProps) {
               value={locator}
               onChange={(e) => setLocator(e.target.value)}
               className="font-mono uppercase"
+              placeholder="es. JN65du"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-lat">Latitudine</Label>
+            <Input
+              id="edit-lat"
+              type="number"
+              step="any"
+              min="-90"
+              max="90"
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              placeholder="es. 45.12345"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-lon">Longitudine</Label>
+            <Input
+              id="edit-lon"
+              type="number"
+              step="any"
+              min="-180"
+              max="180"
+              value={lon}
+              onChange={(e) => setLon(e.target.value)}
+              placeholder="es. 11.12345"
             />
           </div>
         </div>
