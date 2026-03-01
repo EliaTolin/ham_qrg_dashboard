@@ -248,28 +248,34 @@ export type Database = {
       }
       repeater_reports: {
         Row: {
+          coordinator_response: string | null
           created_at: string
           description: string
           id: string
           repeater_id: string
+          resolved_at: string | null
           status: Database["public"]["Enums"]["report_status"]
           updated_at: string
           user_id: string
         }
         Insert: {
+          coordinator_response?: string | null
           created_at?: string
           description: string
           id?: string
           repeater_id: string
+          resolved_at?: string | null
           status?: Database["public"]["Enums"]["report_status"]
           updated_at?: string
           user_id: string
         }
         Update: {
+          coordinator_response?: string | null
           created_at?: string
           description?: string
           id?: string
           repeater_id?: string
+          resolved_at?: string | null
           status?: Database["public"]["Enums"]["report_status"]
           updated_at?: string
           user_id?: string

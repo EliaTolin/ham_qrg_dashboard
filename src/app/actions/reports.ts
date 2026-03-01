@@ -6,7 +6,8 @@ import type { ReportStatus } from "@/lib/types";
 
 export async function updateReportStatus(
   reportId: string,
-  status: ReportStatus
+  status: ReportStatus,
+  coordinatorResponse?: string | null
 ) {
   const canManage = await hasPermission("reports.manage");
   if (!canManage) {
@@ -16,7 +17,10 @@ export async function updateReportStatus(
   const supabase = await createClient();
   const { error } = await supabase
     .from("repeater_reports")
-    .update({ status })
+    .update({
+      status,
+      coordinator_response: coordinatorResponse ?? null,
+    })
     .eq("id", reportId);
 
   if (error) {
