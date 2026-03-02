@@ -96,10 +96,10 @@ export default async function ReportsPage({
                 <TableRow key={report.id} className="group relative cursor-pointer">
                   <TableCell className="font-mono font-medium">
                     <Link
-                      href={rep ? `/repeaters/${rep.id}` : `/reports/${report.id}`}
+                      href={`/reports/${report.id}`}
                       className="absolute inset-0"
                     >
-                      <span className="sr-only">Vai al ripetitore</span>
+                      <span className="sr-only">Vai al report</span>
                     </Link>
                     {rep?.callsign ?? rep?.name ?? "—"}
                   </TableCell>
