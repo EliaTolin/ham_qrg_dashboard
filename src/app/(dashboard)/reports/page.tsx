@@ -71,10 +71,11 @@ export default async function ReportsPage({
           <TableHeader>
             <TableRow>
               <TableHead>Repeater</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Reported by</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Date</TableHead>
+              <TableHead>Descrizione</TableHead>
+              <TableHead>Segnalato da</TableHead>
+              <TableHead>Stato</TableHead>
+              <TableHead>Risposta</TableHead>
+              <TableHead>Data</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -116,6 +117,9 @@ export default async function ReportsPage({
                       {report.status}
                     </Badge>
                   </TableCell>
+                  <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                    {report.coordinator_response ?? "—"}
+                  </TableCell>
                   <TableCell className="text-muted-foreground">
                     {new Date(report.created_at).toLocaleDateString("it-IT")}
                   </TableCell>
@@ -124,7 +128,7 @@ export default async function ReportsPage({
             })}
             {(!reports || reports.length === 0) && (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No reports found.
                 </TableCell>
               </TableRow>

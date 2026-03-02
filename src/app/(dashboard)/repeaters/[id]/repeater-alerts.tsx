@@ -1,14 +1,29 @@
 "use client";
 
 import { useState } from "react";
-import { AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, ChevronDown, ChevronUp, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { toast } from "sonner";
 import { ReportStatusSelect } from "../../reports/report-status-select";
+import { deleteReport } from "@/app/actions/reports";
 import type { RepeaterReportWithProfile } from "@/lib/types";
 
 const STATUS_CLASSES: Record<string, string> = {
@@ -53,7 +68,21 @@ interface RepeaterAlertsProps {
 }
 
 export function RepeaterAlerts({ reports, canManage }: RepeaterAlertsProps) {
+  const router = useRouter();
   const [open, setOpen] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  async function handleDelete(reportId: string) {
+    setDeletingId(reportId);
+    const result = await deleteReport(reportId);
+    setDeletingId(null);
+    if (result?.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Report eliminato");
+      router.refresh();
+    }
+  }
 
   const pendingReports = reports.filter(
     (r) => r.status === "pending" || r.status === "reviewed"
@@ -101,6 +130,14 @@ export function RepeaterAlerts({ reports, canManage }: RepeaterAlertsProps) {
                   </span>
                 </div>
                 <p className="mt-2 text-sm">{report.description}</p>
+                {report.coordinator_response && (
+                  <div className="mt-2 rounded bg-muted/60 px-3 py-2">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Risposta coordinatore
+                    </p>
+                    <p className="mt-0.5 text-sm">{report.coordinator_response}</p>
+                  </div>
+                )}
                 {canManage && (
                   <div className="mt-3 flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
@@ -110,6 +147,35 @@ export function RepeaterAlerts({ reports, canManage }: RepeaterAlertsProps) {
                       reportId={report.id}
                       currentStatus={report.status}
                     />
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="ml-auto h-8 w-8"
+                          disabled={deletingId === report.id}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Eliminare questo report?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Questa azione è irreversibile. Il report verrà eliminato permanentemente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annulla</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(report.id)}
+                            disabled={deletingId === report.id}
+                          >
+                            {deletingId === report.id ? "Eliminazione..." : "Elimina"}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 )}
               </div>

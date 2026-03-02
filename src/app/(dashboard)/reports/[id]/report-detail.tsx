@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Radio, ExternalLink } from "lucide-react";
+import { ArrowLeft, Radio, ExternalLink, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -11,8 +12,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "sonner";
 import { ReportStatusSelect } from "../report-status-select";
+import { deleteReport } from "@/app/actions/reports";
 import { RepeaterEditForm } from "../../repeaters/[id]/repeater-edit-form";
 import type { RepeaterReport, Repeater, Profile, ReportStatus } from "@/lib/types";
 
@@ -38,10 +52,25 @@ export function ReportDetail({
   canManage,
   canEdit,
 }: ReportDetailProps) {
+  const router = useRouter();
+  const [deleting, setDeleting] = useState(false);
+
   const reporterName =
     reporter?.callsign ??
     ([reporter?.first_name, reporter?.last_name].filter(Boolean).join(" ") ||
     "Unknown");
+
+  async function handleDelete() {
+    setDeleting(true);
+    const result = await deleteReport(report.id);
+    setDeleting(false);
+    if (result?.error) {
+      toast.error(result.error);
+    } else {
+      toast.success("Report eliminato");
+      router.push("/reports");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -52,12 +81,36 @@ export function ReportDetail({
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-1 items-center gap-3">
           <h1 className="text-2xl font-bold">Report #{report.id.slice(0, 8)}</h1>
           <Badge variant="outline" className={STATUS_CLASSES[report.status]}>
             {report.status}
           </Badge>
         </div>
+        {canManage && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={deleting}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Elimina
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Eliminare questo report?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Questa azione è irreversibile. Il report verrà eliminato permanentemente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} disabled={deleting}>
+                  {deleting ? "Eliminazione..." : "Elimina"}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       {/* Report card */}
@@ -87,19 +140,44 @@ export function ReportDetail({
               <p className="text-xs font-medium text-muted-foreground">Aggiornato il</p>
               <p className="mt-0.5">{new Date(report.updated_at).toLocaleString("it-IT")}</p>
             </div>
+            {report.resolved_at && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Risolto il</p>
+                <p className="mt-0.5">{new Date(report.resolved_at).toLocaleString("it-IT")}</p>
+              </div>
+            )}
           </div>
 
-          {/* Gestione stato */}
+          {/* Risposta coordinatore (read-only se non canManage) */}
+          {report.coordinator_response && !canManage && (
+            <>
+              <Separator />
+              <div>
+                <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                  Risposta coordinatore
+                </p>
+                <div className="rounded-md bg-muted/50 p-3">
+                  <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {report.coordinator_response}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Gestione stato + risposta coordinatore */}
           {canManage && (
             <>
               <Separator />
               <div>
                 <p className="mb-2 text-sm font-medium text-muted-foreground">
-                  Cambia stato
+                  Gestione report
                 </p>
                 <ReportStatusSelect
                   reportId={report.id}
                   currentStatus={report.status as ReportStatus}
+                  currentResponse={report.coordinator_response}
+                  showResponseField
                 />
               </div>
             </>
