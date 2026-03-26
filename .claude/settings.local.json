@@ -13,7 +13,11 @@
       "Bash(pnpm add:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(ls /Users/eliatolin/Desktop/Aurora/Progetti/HamQRG/ham_qrg_dashboard/src/app/\\\\\\(dashboard\\\\\\)/repeaters/[id]/)"
+    ],
+    "additionalDirectories": [
+      "/Users/eliatolin/Desktop/Aurora/Progetti/HamQRG/ham_qrg_supabase/supabase/migrations"
     ]
   },
   "enableAllProjectMcpServers": true,

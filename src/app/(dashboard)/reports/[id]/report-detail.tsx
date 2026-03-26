@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Radio, ExternalLink, Trash2 } from "lucide-react";
+import { ArrowLeft, Radio, ExternalLink, Trash2, Plus, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -28,7 +28,11 @@ import { toast } from "sonner";
 import { ReportStatusSelect } from "../report-status-select";
 import { deleteReport } from "@/app/actions/reports";
 import { RepeaterEditForm } from "../../repeaters/[id]/repeater-edit-form";
-import type { RepeaterReport, Repeater, Profile, ReportStatus } from "@/lib/types";
+import { AccessDialog } from "../../repeaters/[id]/access-dialog";
+import { deleteAccess } from "@/app/actions/repeaters";
+import { formatCtcss } from "@/lib/format";
+import { getModeColor } from "@/lib/mode-colors";
+import type { RepeaterReport, Repeater, Profile, ReportStatus, RepeaterAccessWithNetwork, Network } from "@/lib/types";
 
 const STATUS_CLASSES: Record<string, string> = {
   pending: "bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700",
@@ -41,16 +45,22 @@ interface ReportDetailProps {
   report: RepeaterReport;
   repeater: Repeater | null;
   reporter: Pick<Profile, "first_name" | "last_name" | "callsign"> | null;
+  closedBy: Pick<Profile, "first_name" | "last_name" | "callsign"> | null;
   canManage: boolean;
   canEdit: boolean;
+  accesses: RepeaterAccessWithNetwork[];
+  networks: Network[];
 }
 
 export function ReportDetail({
   report,
   repeater,
   reporter,
+  closedBy,
   canManage,
   canEdit,
+  accesses,
+  networks,
 }: ReportDetailProps) {
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
@@ -59,6 +69,12 @@ export function ReportDetail({
     reporter?.callsign ??
     ([reporter?.first_name, reporter?.last_name].filter(Boolean).join(" ") ||
     "Unknown");
+
+  const closedByName = closedBy
+    ? (closedBy.callsign ??
+      ([closedBy.first_name, closedBy.last_name].filter(Boolean).join(" ") ||
+      "Unknown"))
+    : null;
 
   async function handleDelete() {
     setDeleting(true);
@@ -146,6 +162,12 @@ export function ReportDetail({
                 <p className="mt-0.5">{new Date(report.resolved_at).toLocaleString("it-IT")}</p>
               </div>
             )}
+            {closedByName && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Chiuso da</p>
+                <p className="mt-0.5">{closedByName}</p>
+              </div>
+            )}
           </div>
 
           {/* Risposta coordinatore (read-only se non canManage) */}
@@ -201,6 +223,134 @@ export function ReportDetail({
             </Button>
           </div>
           <RepeaterEditForm repeater={repeater} canEdit={canEdit} />
+
+          {/* Access methods */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-semibold">
+                Accessi ({accesses.length})
+              </h3>
+              {canEdit && (
+                <AccessDialog
+                  repeaterId={repeater.id}
+                  networks={networks}
+                  trigger={
+                    <Button size="sm">
+                      <Plus className="mr-2 h-3.5 w-3.5" />
+                      Aggiungi accesso
+                    </Button>
+                  }
+                />
+              )}
+            </div>
+            {accesses.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nessun metodo di accesso registrato.
+              </p>
+            )}
+            {accesses.map((access) => (
+              <Card key={access.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center gap-2">
+                    <Badge className={getModeColor(access.mode)}>
+                      {access.mode}
+                    </Badge>
+                    {access.network && (
+                      <span className="text-sm text-muted-foreground">
+                        {access.network.name}
+                        {access.network.kind && (
+                          <span className="ml-1 text-xs">({access.network.kind})</span>
+                        )}
+                      </span>
+                    )}
+                    {canEdit && (
+                      <div className="ml-auto flex items-center gap-1">
+                        <AccessDialog
+                          repeaterId={repeater.id}
+                          access={access}
+                          networks={networks}
+                          trigger={
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                          }
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={async () => {
+                            if (!confirm("Eliminare questo accesso?")) return;
+                            const result = await deleteAccess(access.id);
+                            if (result.error) {
+                              toast.error(result.error);
+                            } else {
+                              toast.success("Accesso eliminato");
+                              router.refresh();
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
+                    {access.ctcss_tx_hz != null && (
+                      <div>
+                        <dt className="text-muted-foreground">CTCSS TX</dt>
+                        <dd>{formatCtcss(access.ctcss_tx_hz)}</dd>
+                      </div>
+                    )}
+                    {access.ctcss_rx_hz != null && (
+                      <div>
+                        <dt className="text-muted-foreground">CTCSS RX</dt>
+                        <dd>{formatCtcss(access.ctcss_rx_hz)}</dd>
+                      </div>
+                    )}
+                    {access.dcs_code != null && (
+                      <div>
+                        <dt className="text-muted-foreground">DCS</dt>
+                        <dd>{access.dcs_code}</dd>
+                      </div>
+                    )}
+                    {access.color_code != null && (
+                      <div>
+                        <dt className="text-muted-foreground">Color Code</dt>
+                        <dd>{access.color_code}</dd>
+                      </div>
+                    )}
+                    {access.talkgroup != null && (
+                      <div>
+                        <dt className="text-muted-foreground">Talkgroup</dt>
+                        <dd>{access.talkgroup}</dd>
+                      </div>
+                    )}
+                    {access.dg_id != null && (
+                      <div>
+                        <dt className="text-muted-foreground">DG-ID</dt>
+                        <dd>{access.dg_id}</dd>
+                      </div>
+                    )}
+                    {access.node_id != null && (
+                      <div>
+                        <dt className="text-muted-foreground">Node ID</dt>
+                        <dd>{access.node_id}</dd>
+                      </div>
+                    )}
+                    {access.notes && (
+                      <div className="col-span-full">
+                        <dt className="text-muted-foreground">Note</dt>
+                        <dd>{access.notes}</dd>
+                      </div>
+                    )}
+                  </dl>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
     </div>

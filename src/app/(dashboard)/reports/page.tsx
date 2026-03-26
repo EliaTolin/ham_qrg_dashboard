@@ -37,7 +37,7 @@ export default async function ReportsPage({
   let query = supabase
     .from("repeater_reports")
     .select(
-      "*, repeaters(id, callsign, name, frequency_hz, locality), profiles!repeater_reports_profile_fk(first_name, last_name, callsign)"
+      "*, repeaters(id, callsign, name, frequency_hz, locality), profiles!repeater_reports_profile_fk(first_name, last_name, callsign), closer:profiles!repeater_reports_closed_by_profile_fk(first_name, last_name, callsign)"
     )
     .order("created_at", { ascending: false });
 
@@ -74,6 +74,7 @@ export default async function ReportsPage({
               <TableHead>Descrizione</TableHead>
               <TableHead>Segnalato da</TableHead>
               <TableHead>Stato</TableHead>
+              <TableHead>Chiuso da</TableHead>
               <TableHead>Risposta</TableHead>
               <TableHead>Data</TableHead>
             </TableRow>
@@ -92,6 +93,7 @@ export default async function ReportsPage({
                 last_name: string | null;
                 callsign: string | null;
               } | null;
+              const closer = (report as unknown as { closer: typeof reporter }).closer;
               return (
                 <TableRow key={report.id} className="group relative cursor-pointer">
                   <TableCell className="font-mono font-medium">
@@ -117,6 +119,14 @@ export default async function ReportsPage({
                       {report.status}
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    {closer
+                      ? (closer.callsign ??
+                        ([closer.first_name, closer.last_name]
+                          .filter(Boolean)
+                          .join(" ") || "—"))
+                      : "—"}
+                  </TableCell>
                   <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                     {report.coordinator_response ?? "—"}
                   </TableCell>
@@ -128,7 +138,7 @@ export default async function ReportsPage({
             })}
             {(!reports || reports.length === 0) && (
               <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center">
+                <TableCell colSpan={7} className="h-24 text-center">
                   No reports found.
                 </TableCell>
               </TableRow>
