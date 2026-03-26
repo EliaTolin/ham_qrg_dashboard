@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { AppPermission, AppRole } from "./types";
 
-const PERMISSION_MAP: Record<string, AppPermission[]> = {
+const PERMISSION_MAP: Record<string, string[]> = {
   admin: [
     "repeaters.write",
     "repeaters.delete",
@@ -10,8 +10,9 @@ const PERMISSION_MAP: Record<string, AppPermission[]> = {
     "reports.manage",
     "users.manage",
     "sync.trigger",
+    "sync.review",
   ],
-  bridge_manager: ["repeaters.write", "networks.write", "reports.manage"],
+  bridge_manager: ["repeaters.write", "networks.write", "reports.manage", "sync.review"],
   viewer: [],
 };
 
@@ -42,7 +43,7 @@ export async function isAdmin(): Promise<boolean> {
 }
 
 export async function hasPermission(
-  permission: AppPermission
+  permission: AppPermission | string
 ): Promise<boolean> {
   const userRole = await getUserRole();
   const permissions = PERMISSION_MAP[userRole] ?? [];

@@ -11,6 +11,7 @@ import {
   Users,
   RefreshCw,
   BarChart3,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   Sidebar,
@@ -54,6 +55,12 @@ const adminNav = [
     href: "/admin/sync",
     icon: RefreshCw,
     roles: ["admin"] as AppRole[],
+  },
+  {
+    title: "Pending Changes",
+    href: "/admin/pending-changes",
+    icon: ClipboardCheck,
+    roles: ["admin", "bridge_manager"] as AppRole[],
   },
 ];
 

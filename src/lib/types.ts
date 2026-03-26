@@ -40,3 +40,23 @@ export type RepeaterFeedbackWithRelations = RepeaterFeedback & {
 export type RepeaterReportWithProfile = RepeaterReport & {
   profiles: Pick<Profile, "first_name" | "last_name" | "callsign"> | null;
 };
+
+// Manual type — sync_pending_changes is not in generated types
+export type PendingChangeStatus = "pending" | "approved" | "rejected";
+export type PendingChangeType = "update" | "new" | "deactivate" | "reactivate";
+
+export interface SyncPendingChange {
+  id: string;
+  repeater_id: string | null;
+  external_id: string;
+  change_type: PendingChangeType;
+  remote_data: Record<string, unknown>;
+  diff: Record<string, { local: unknown; remote: unknown }>;
+  remote_updated_at: string | null;
+  local_updated_at: string | null;
+  suggested_winner: "remote" | "local" | "unknown";
+  status: PendingChangeStatus;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
