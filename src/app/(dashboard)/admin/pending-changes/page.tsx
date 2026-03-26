@@ -6,6 +6,7 @@ import { ClipboardCheck } from "lucide-react";
 import type { SyncPendingChange } from "@/lib/types";
 import { PendingChangesTable } from "./pending-changes-table";
 import { FetchUpdatesButton } from "./fetch-updates-button";
+import { DeleteAllButton } from "./delete-all-button";
 
 export default async function PendingChangesPage() {
   const canReview = await hasPermission("sync.review");
@@ -35,7 +36,10 @@ export default async function PendingChangesPage() {
               </span>
             )}
           </CardTitle>
-          <FetchUpdatesButton />
+          <div className="flex items-center gap-2">
+            <DeleteAllButton />
+            <FetchUpdatesButton />
+          </div>
         </div>
       </CardHeader>
       <CardContent>
