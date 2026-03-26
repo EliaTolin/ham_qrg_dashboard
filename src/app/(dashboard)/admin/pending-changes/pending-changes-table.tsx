@@ -23,9 +23,10 @@ import {
   rejectPendingChange,
   bulkApprovePendingChanges,
   bulkRejectPendingChanges,
+  deleteAllPendingChanges,
 } from "@/app/actions/pending-changes";
 import type { SyncPendingChange, PendingChangeType } from "@/lib/types";
-import { Check, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Check, X, ChevronDown, ChevronRight, Plus, Minus, ArrowRight, Trash2 } from "lucide-react";
 
 const CHANGE_TYPE_VARIANT: Record<
   PendingChangeType,
@@ -53,25 +54,40 @@ const WINNER_VARIANT: Record<
   unknown: "outline",
 };
 
-function FieldLabel(field: string): string {
-  const labels: Record<string, string> = {
-    name: "Nome",
-    callsign: "Nominativo",
-    frequency_hz: "Frequenza",
-    shift_hz: "Shift",
-    locality: "Località",
-    locator: "Locator",
-    lat: "Latitudine",
-    lon: "Longitudine",
-    is_active: "Attivo",
-    AutoON: "AutoON",
-    ManualON: "ManualON",
-  };
-  return labels[field] ?? field;
+const FIELD_LABELS: Record<string, string> = {
+  name: "Nome",
+  callsign: "Nominativo",
+  frequency_hz: "Frequenza",
+  shift_hz: "Shift",
+  locality: "Località",
+  locator: "Locator",
+  lat: "Latitudine",
+  lon: "Longitudine",
+  is_active: "Attivo",
+  AutoON: "AutoON",
+  ManualON: "ManualON",
+  Ripetitore: "Nome",
+  Identificativo: "Nominativo",
+  Frequenza: "Frequenza",
+  Shift: "Shift",
+  Tono: "Tono CTCSS",
+  ColorCode: "Color Code",
+  Stanza: "Stanza/Node",
+  Rete: "Rete",
+  Lat: "Latitudine",
+  Long: "Longitudine",
+  Localita: "Località",
+  Locator: "Locator",
+  Tipologia: "Tipologia",
+  Ultima_Modifica: "Ultima Modifica",
+};
+
+function fieldLabel(field: string): string {
+  return FIELD_LABELS[field] ?? field;
 }
 
 function formatValue(field: string, value: unknown): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined || value === "") return "—";
   if (field === "frequency_hz" || field === "shift_hz") {
     const mhz = (value as number) / 1_000_000;
     return `${mhz.toFixed(4)} MHz`;
@@ -79,6 +95,120 @@ function formatValue(field: string, value: unknown): string {
   if (typeof value === "boolean") return value ? "Sì" : "No";
   if (typeof value === "number") return value.toString();
   return String(value);
+}
+
+// Fields to show for new repeaters (from remote_data)
+const NEW_REPEATER_FIELDS = [
+  "Ripetitore",
+  "Identificativo",
+  "Frequenza",
+  "Shift",
+  "Tipologia",
+  "Tono",
+  "ColorCode",
+  "Stanza",
+  "Rete",
+  "Localita",
+  "Locator",
+  "Lat",
+  "Long",
+  "Ultima_Modifica",
+] as const;
+
+/** Git-style diff for update changes */
+function UpdateDiff({
+  diff,
+}: {
+  diff: Record<string, { local: unknown; remote: unknown }>;
+}) {
+  const keys = Object.keys(diff);
+  if (keys.length === 0) return null;
+
+  return (
+    <div className="space-y-1 font-mono text-sm">
+      {keys.map((field) => {
+        const d = diff[field];
+        return (
+          <div key={field} className="space-y-0.5">
+            <div className="text-xs font-semibold text-muted-foreground">
+              {fieldLabel(field)}
+            </div>
+            <div className="flex items-start gap-2 rounded bg-red-500/10 px-3 py-1 text-red-700 dark:text-red-400">
+              <Minus className="mt-0.5 h-3 w-3 shrink-0" />
+              <span>{formatValue(field, d.local)}</span>
+            </div>
+            <div className="flex items-start gap-2 rounded bg-green-500/10 px-3 py-1 text-green-700 dark:text-green-400">
+              <Plus className="mt-0.5 h-3 w-3 shrink-0" />
+              <span>{formatValue(field, d.remote)}</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Shows all fields for a new repeater */
+function NewRepeaterDetail({
+  remoteData,
+}: {
+  remoteData: Record<string, unknown>;
+}) {
+  return (
+    <div className="space-y-1 font-mono text-sm">
+      {NEW_REPEATER_FIELDS.map((field) => {
+        const value = remoteData[field];
+        if (value === null || value === undefined || value === "") return null;
+        return (
+          <div
+            key={field}
+            className="flex items-start gap-2 rounded bg-green-500/10 px-3 py-1 text-green-700 dark:text-green-400"
+          >
+            <Plus className="mt-0.5 h-3 w-3 shrink-0" />
+            <span className="font-semibold text-muted-foreground min-w-[120px]">
+              {fieldLabel(field)}
+            </span>
+            <span>{String(value)}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Shows activation/deactivation detail */
+function ActivationDiff({
+  change,
+}: {
+  change: SyncPendingChange;
+}) {
+  const isDeactivate = change.change_type === "deactivate";
+  return (
+    <div className="space-y-1 font-mono text-sm">
+      <div className={`flex items-center gap-2 rounded px-3 py-2 ${
+        isDeactivate
+          ? "bg-red-500/10 text-red-700 dark:text-red-400"
+          : "bg-green-500/10 text-green-700 dark:text-green-400"
+      }`}>
+        <ArrowRight className="h-3 w-3 shrink-0" />
+        <span className="font-semibold">
+          {isDeactivate ? "Ponte da DISATTIVARE" : "Ponte da RIATTIVARE"}
+        </span>
+      </div>
+      {change.diff.AutoON && (
+        <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
+          <span className="text-muted-foreground min-w-[120px]">AutoON</span>
+          <span>{String(change.diff.AutoON.remote)}</span>
+        </div>
+      )}
+      {change.diff.ManualON && (
+        <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
+          <span className="text-muted-foreground min-w-[120px]">ManualON</span>
+          <span>{String(change.diff.ManualON.remote)}</span>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function PendingChangesTable({
@@ -169,6 +299,20 @@ export function PendingChangesTable({
     });
   };
 
+  const handleDeleteAll = () => {
+    if (!confirm("Eliminare tutte le modifiche in attesa?")) return;
+    startTransition(async () => {
+      const result = await deleteAllPendingChanges();
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success("Tutte le modifiche eliminate");
+        setSelected(new Set());
+        router.refresh();
+      }
+    });
+  };
+
   if (changes.length === 0) {
     return (
       <div className="flex h-24 items-center justify-center text-muted-foreground">
@@ -180,30 +324,43 @@ export function PendingChangesTable({
   return (
     <div className="space-y-4">
       {/* Bulk actions */}
-      {selected.size > 0 && (
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">
-            {selected.size} selezionati
-          </span>
-          <Button
-            size="sm"
-            onClick={handleBulkApprove}
-            disabled={isPending}
-          >
-            <Check className="mr-1 h-3 w-3" />
-            Approva tutti
-          </Button>
+      <div className="flex items-center gap-2">
+        {selected.size > 0 && (
+          <>
+            <span className="text-sm text-muted-foreground">
+              {selected.size} selezionati
+            </span>
+            <Button
+              size="sm"
+              onClick={handleBulkApprove}
+              disabled={isPending}
+            >
+              <Check className="mr-1 h-3 w-3" />
+              Approva tutti
+            </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={handleBulkReject}
+              disabled={isPending}
+            >
+              <X className="mr-1 h-3 w-3" />
+              Rifiuta tutti
+            </Button>
+          </>
+        )}
+        <div className="ml-auto">
           <Button
             size="sm"
             variant="destructive"
-            onClick={handleBulkReject}
+            onClick={handleDeleteAll}
             disabled={isPending}
           >
-            <X className="mr-1 h-3 w-3" />
-            Rifiuta tutti
+            <Trash2 className="mr-1 h-3 w-3" />
+            Elimina tutti
           </Button>
         </div>
-      )}
+      </div>
 
       <div className="rounded-md border">
         <Table>
@@ -235,6 +392,23 @@ export function PendingChangesTable({
                 (change.remote_data.Identificativo as string) ||
                 change.external_id;
 
+              // Summary for the "Campi" column
+              let fieldsSummary: string;
+              if (change.change_type === "new") {
+                fieldsSummary = "Nuovo repeater";
+              } else if (
+                change.change_type === "deactivate" ||
+                change.change_type === "reactivate"
+              ) {
+                fieldsSummary = change.change_type === "deactivate"
+                  ? "Disattivazione"
+                  : "Riattivazione";
+              } else {
+                fieldsSummary = diffKeys.length > 0
+                  ? diffKeys.map((k) => fieldLabel(k)).join(", ")
+                  : "—";
+              }
+
               return (
                 <Collapsible key={change.id} asChild open={isExpanded}>
                   <>
@@ -259,6 +433,11 @@ export function PendingChangesTable({
                       </TableCell>
                       <TableCell className="font-medium">
                         {repeaterName}
+                        {change.remote_data.Frequenza && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            {change.remote_data.Frequenza as string} MHz
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Badge variant={CHANGE_TYPE_VARIANT[change.change_type]}>
@@ -270,10 +449,8 @@ export function PendingChangesTable({
                           {change.suggested_winner}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {diffKeys.length > 0
-                          ? diffKeys.map((k) => FieldLabel(k)).join(", ")
-                          : "—"}
+                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                        {fieldsSummary}
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm">
                         {new Date(change.created_at).toLocaleString()}
@@ -306,55 +483,37 @@ export function PendingChangesTable({
                     </TableRow>
 
                     <CollapsibleContent asChild>
-                      <TableRow className="bg-muted/50">
+                      <TableRow className="bg-muted/30 hover:bg-muted/30">
                         <TableCell colSpan={8} className="p-4">
-                          {diffKeys.length > 0 ? (
-                            <div className="rounded-md border">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>Campo</TableHead>
-                                    <TableHead>Locale</TableHead>
-                                    <TableHead>Remoto (iz8wnh)</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {diffKeys.map((field) => {
-                                    const d = change.diff[field];
-                                    return (
-                                      <TableRow key={field}>
-                                        <TableCell className="font-medium">
-                                          {FieldLabel(field)}
-                                        </TableCell>
-                                        <TableCell className="text-muted-foreground">
-                                          {formatValue(field, d.local)}
-                                        </TableCell>
-                                        <TableCell className="font-semibold">
-                                          {formatValue(field, d.remote)}
-                                        </TableCell>
-                                      </TableRow>
-                                    );
-                                  })}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          ) : (
-                            <p className="text-sm text-muted-foreground">
-                              Nessun dettaglio diff disponibile per questo tipo di modifica.
-                            </p>
+                          {/* Git-style diff based on change type */}
+                          {change.change_type === "new" && (
+                            <NewRepeaterDetail remoteData={change.remote_data} />
                           )}
-                          {change.remote_updated_at && (
-                            <p className="mt-2 text-xs text-muted-foreground">
-                              Ultima modifica remota:{" "}
-                              {new Date(change.remote_updated_at).toLocaleString()}
-                            </p>
+
+                          {change.change_type === "update" && (
+                            <UpdateDiff diff={change.diff} />
                           )}
-                          {change.local_updated_at && (
-                            <p className="text-xs text-muted-foreground">
-                              Ultima modifica locale:{" "}
-                              {new Date(change.local_updated_at).toLocaleString()}
-                            </p>
+
+                          {(change.change_type === "deactivate" ||
+                            change.change_type === "reactivate") && (
+                            <ActivationDiff change={change} />
                           )}
+
+                          {/* Timestamps */}
+                          <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                            {change.remote_updated_at && (
+                              <span>
+                                Remoto:{" "}
+                                {new Date(change.remote_updated_at).toLocaleString()}
+                              </span>
+                            )}
+                            {change.local_updated_at && (
+                              <span>
+                                Locale:{" "}
+                                {new Date(change.local_updated_at).toLocaleString()}
+                              </span>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     </CollapsibleContent>

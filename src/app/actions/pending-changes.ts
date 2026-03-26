@@ -119,6 +119,20 @@ export async function bulkRejectPendingChanges(changeIds: string[]) {
   return { success: true, count: changeIds.length };
 }
 
+export async function deleteAllPendingChanges() {
+  const canReview = await hasPermission("sync.review");
+  if (!canReview) return { error: "Non autorizzato" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from(TABLE)
+    .delete()
+    .eq("status", "pending");
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
 // --- Private helpers ---
 
 // deno-lint-ignore no-explicit-any
