@@ -23,10 +23,9 @@ import {
   rejectPendingChange,
   bulkApprovePendingChanges,
   bulkRejectPendingChanges,
-  deleteAllPendingChanges,
 } from "@/app/actions/pending-changes";
 import type { SyncPendingChange, PendingChangeType } from "@/lib/types";
-import { Check, X, ChevronDown, ChevronRight, Plus, Minus, ArrowRight, Trash2 } from "lucide-react";
+import { Check, X, ChevronDown, ChevronRight, Plus, Minus, ArrowRight } from "lucide-react";
 
 const CHANGE_TYPE_VARIANT: Record<
   PendingChangeType,
@@ -299,20 +298,6 @@ export function PendingChangesTable({
     });
   };
 
-  const handleDeleteAll = () => {
-    if (!confirm("Eliminare tutte le modifiche in attesa?")) return;
-    startTransition(async () => {
-      const result = await deleteAllPendingChanges();
-      if (result.error) {
-        toast.error(result.error);
-      } else {
-        toast.success("Tutte le modifiche eliminate");
-        setSelected(new Set());
-        router.refresh();
-      }
-    });
-  };
-
   if (changes.length === 0) {
     return (
       <div className="flex h-24 items-center justify-center text-muted-foreground">
@@ -324,43 +309,30 @@ export function PendingChangesTable({
   return (
     <div className="space-y-4">
       {/* Bulk actions */}
-      <div className="flex items-center gap-2">
-        {selected.size > 0 && (
-          <>
-            <span className="text-sm text-muted-foreground">
-              {selected.size} selezionati
-            </span>
-            <Button
-              size="sm"
-              onClick={handleBulkApprove}
-              disabled={isPending}
-            >
-              <Check className="mr-1 h-3 w-3" />
-              Approva tutti
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={handleBulkReject}
-              disabled={isPending}
-            >
-              <X className="mr-1 h-3 w-3" />
-              Rifiuta tutti
-            </Button>
-          </>
-        )}
-        <div className="ml-auto">
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            {selected.size} selezionati
+          </span>
+          <Button
+            size="sm"
+            onClick={handleBulkApprove}
+            disabled={isPending}
+          >
+            <Check className="mr-1 h-3 w-3" />
+            Approva tutti
+          </Button>
           <Button
             size="sm"
             variant="destructive"
-            onClick={handleDeleteAll}
+            onClick={handleBulkReject}
             disabled={isPending}
           >
-            <Trash2 className="mr-1 h-3 w-3" />
-            Elimina tutti
+            <X className="mr-1 h-3 w-3" />
+            Rifiuta tutti
           </Button>
         </div>
-      </div>
+      )}
 
       <div className="rounded-md border">
         <Table>
