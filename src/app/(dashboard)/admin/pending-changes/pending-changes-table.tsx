@@ -433,11 +433,11 @@ export function PendingChangesTable({
                       </TableCell>
                       <TableCell className="font-medium">
                         {repeaterName}
-                        {change.remote_data.Frequenza && (
+                        {change.remote_data.Frequenza ? (
                           <span className="ml-2 text-xs text-muted-foreground">
-                            {change.remote_data.Frequenza as string} MHz
+                            {String(change.remote_data.Frequenza)} MHz
                           </span>
-                        )}
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         <Badge variant={CHANGE_TYPE_VARIANT[change.change_type]}>
