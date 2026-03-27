@@ -12,11 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import React from "react";
 import { toast } from "sonner";
 import {
   approvePendingChange,
@@ -210,10 +206,100 @@ function ActivationDiff({
   );
 }
 
+export interface RepeaterSummary {
+  id: string;
+  name: string | null;
+  callsign: string | null;
+  frequency_hz: number;
+  shift_hz: number | null;
+  locality: string | null;
+  locator: string | null;
+  is_active: boolean;
+  repeater_access: {
+    mode: string;
+    ctcss_tx_hz: number | null;
+    color_code: number | null;
+    node_id: number | null;
+    network: { name: string } | null;
+  }[];
+}
+
+function formatFrequency(hz: number): string {
+  return (hz / 1_000_000).toFixed(4) + " MHz";
+}
+
+/** Card showing local repeater info */
+function RepeaterInfoCard({ repeater }: { repeater: RepeaterSummary }) {
+  return (
+    <div className="rounded-md border bg-background p-3 space-y-1 text-sm mb-3">
+      <div className="font-semibold text-base">
+        {repeater.callsign ?? "—"}{" "}
+        {repeater.name && (
+          <span className="font-normal text-muted-foreground">
+            — {repeater.name}
+          </span>
+        )}
+        {!repeater.is_active && (
+          <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">
+            INATTIVO
+          </span>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+        <span>
+          {formatFrequency(repeater.frequency_hz)}
+          {repeater.shift_hz != null && (
+            <span className="ml-1">
+              (shift {repeater.shift_hz > 0 ? "+" : ""}
+              {(repeater.shift_hz / 1_000_000).toFixed(1)})
+            </span>
+          )}
+        </span>
+        {repeater.locality && <span>{repeater.locality}</span>}
+        {repeater.locator && (
+          <span className="font-mono">{repeater.locator}</span>
+        )}
+      </div>
+      {repeater.repeater_access.length > 0 && (
+        <div className="flex flex-wrap gap-1 pt-1">
+          {repeater.repeater_access.map((a, i) => (
+            <span
+              key={i}
+              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+            >
+              <span className="font-semibold">{a.mode}</span>
+              {a.network?.name && (
+                <span className="text-muted-foreground">{a.network.name}</span>
+              )}
+              {a.ctcss_tx_hz != null && (
+                <span className="text-muted-foreground">
+                  CTCSS {a.ctcss_tx_hz}
+                </span>
+              )}
+              {a.color_code != null && (
+                <span className="text-muted-foreground">
+                  CC{a.color_code}
+                </span>
+              )}
+              {a.node_id != null && (
+                <span className="text-muted-foreground">
+                  #{a.node_id}
+                </span>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function PendingChangesTable({
   changes,
+  repeaterMap,
 }: {
   changes: SyncPendingChange[];
+  repeaterMap: Record<string, RepeaterSummary>;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -359,10 +445,22 @@ export function PendingChangesTable({
             {changes.map((change) => {
               const isExpanded = expandedRows.has(change.id);
               const diffKeys = Object.keys(change.diff);
-              const repeaterName =
-                (change.remote_data.Ripetitore as string) ||
-                (change.remote_data.Identificativo as string) ||
-                change.external_id;
+              const localRepeater = change.repeater_id
+                ? repeaterMap[change.repeater_id]
+                : undefined;
+
+              // Build repeater display name from local data or remote data
+              const repeaterName = localRepeater
+                ? `${localRepeater.callsign ?? ""} ${localRepeater.name ?? ""}`.trim() || change.external_id
+                : (change.remote_data.Ripetitore as string) ||
+                  (change.remote_data.Identificativo as string) ||
+                  change.external_id;
+
+              const freqDisplay = localRepeater
+                ? formatFrequency(localRepeater.frequency_hz)
+                : change.remote_data.Frequenza
+                  ? `${String(change.remote_data.Frequenza)} MHz`
+                  : null;
 
               // Summary for the "Campi" column
               let fieldsSummary: string;
@@ -382,115 +480,121 @@ export function PendingChangesTable({
               }
 
               return (
-                <Collapsible key={change.id} asChild open={isExpanded}>
-                  <>
-                    <TableRow
-                      className="cursor-pointer"
-                      onClick={() => toggleExpanded(change.id)}
+                <React.Fragment key={change.id}>
+                  <TableRow
+                    className="cursor-pointer"
+                    onClick={() => toggleExpanded(change.id)}
+                  >
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        checked={selected.has(change.id)}
+                        onChange={() => toggleSelect(change.id)}
+                        className="rounded"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      <div>{repeaterName}</div>
+                      {freqDisplay && (
+                        <div className="text-xs text-muted-foreground">
+                          {freqDisplay}
+                          {localRepeater?.locality && (
+                            <span className="ml-2">{localRepeater.locality}</span>
+                          )}
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={CHANGE_TYPE_VARIANT[change.change_type]}>
+                        {CHANGE_TYPE_LABEL[change.change_type]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={WINNER_VARIANT[change.suggested_winner] ?? "outline"}>
+                        {change.suggested_winner}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                      {fieldsSummary}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm">
+                      {new Date(change.created_at).toLocaleString()}
+                    </TableCell>
+                    <TableCell
+                      className="text-right"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selected.has(change.id)}
-                          onChange={() => toggleSelect(change.id)}
-                          className="rounded"
-                        />
-                      </TableCell>
-                      <TableCell>
-                        {isExpanded ? (
-                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleApprove(change.id)}
+                          disabled={isPending}
+                          title="Approva"
+                        >
+                          <Check className="h-4 w-4 text-green-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleReject(change.id)}
+                          disabled={isPending}
+                          title="Rifiuta"
+                        >
+                          <X className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+
+                  {isExpanded && (
+                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                      <TableCell colSpan={8} className="p-4">
+                        {/* Local repeater info card */}
+                        {localRepeater && (
+                          <RepeaterInfoCard repeater={localRepeater} />
                         )}
-                      </TableCell>
-                      <TableCell className="font-medium">
-                        {repeaterName}
-                        {change.remote_data.Frequenza ? (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            {String(change.remote_data.Frequenza)} MHz
-                          </span>
-                        ) : null}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={CHANGE_TYPE_VARIANT[change.change_type]}>
-                          {CHANGE_TYPE_LABEL[change.change_type]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={WINNER_VARIANT[change.suggested_winner] ?? "outline"}>
-                          {change.suggested_winner}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                        {fieldsSummary}
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap text-sm">
-                        {new Date(change.created_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell
-                        className="text-right"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleApprove(change.id)}
-                            disabled={isPending}
-                            title="Approva"
-                          >
-                            <Check className="h-4 w-4 text-green-600" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => handleReject(change.id)}
-                            disabled={isPending}
-                            title="Rifiuta"
-                          >
-                            <X className="h-4 w-4 text-destructive" />
-                          </Button>
+
+                        {/* Git-style diff based on change type */}
+                        {change.change_type === "new" && (
+                          <NewRepeaterDetail remoteData={change.remote_data} />
+                        )}
+
+                        {change.change_type === "update" && (
+                          <UpdateDiff diff={change.diff} />
+                        )}
+
+                        {(change.change_type === "deactivate" ||
+                          change.change_type === "reactivate") && (
+                          <ActivationDiff change={change} />
+                        )}
+
+                        {/* Timestamps */}
+                        <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
+                          {change.remote_updated_at && (
+                            <span>
+                              Remoto:{" "}
+                              {new Date(change.remote_updated_at).toLocaleString()}
+                            </span>
+                          )}
+                          {change.local_updated_at && (
+                            <span>
+                              Locale:{" "}
+                              {new Date(change.local_updated_at).toLocaleString()}
+                            </span>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
-
-                    <CollapsibleContent asChild>
-                      <TableRow className="bg-muted/30 hover:bg-muted/30">
-                        <TableCell colSpan={8} className="p-4">
-                          {/* Git-style diff based on change type */}
-                          {change.change_type === "new" && (
-                            <NewRepeaterDetail remoteData={change.remote_data} />
-                          )}
-
-                          {change.change_type === "update" && (
-                            <UpdateDiff diff={change.diff} />
-                          )}
-
-                          {(change.change_type === "deactivate" ||
-                            change.change_type === "reactivate") && (
-                            <ActivationDiff change={change} />
-                          )}
-
-                          {/* Timestamps */}
-                          <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                            {change.remote_updated_at && (
-                              <span>
-                                Remoto:{" "}
-                                {new Date(change.remote_updated_at).toLocaleString()}
-                              </span>
-                            )}
-                            {change.local_updated_at && (
-                              <span>
-                                Locale:{" "}
-                                {new Date(change.local_updated_at).toLocaleString()}
-                              </span>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    </CollapsibleContent>
-                  </>
-                </Collapsible>
+                  )}
+                </React.Fragment>
               );
             })}
           </TableBody>

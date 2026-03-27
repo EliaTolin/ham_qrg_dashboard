@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardCheck } from "lucide-react";
 import type { SyncPendingChange } from "@/lib/types";
-import { PendingChangesTable } from "./pending-changes-table";
+import { PendingChangesTable, type RepeaterSummary } from "./pending-changes-table";
 import { FetchUpdatesButton } from "./fetch-updates-button";
 import { DeleteAllButton } from "./delete-all-button";
 
@@ -22,6 +22,23 @@ export default async function PendingChangesPage() {
     .limit(200);
 
   const changes = (data ?? []) as unknown as SyncPendingChange[];
+
+  // Fetch linked repeaters with accesses for context
+  const repeaterIds = changes
+    .map((c) => c.repeater_id)
+    .filter((id): id is string => id !== null);
+
+  const repeaterMap: Record<string, RepeaterSummary> = {};
+  if (repeaterIds.length > 0) {
+    const { data: repeaters } = await supabase
+      .from("repeaters")
+      .select("id, name, callsign, frequency_hz, shift_hz, locality, locator, is_active, repeater_access(mode, ctcss_tx_hz, color_code, node_id, network:networks(name))")
+      .in("id", [...new Set(repeaterIds)]);
+
+    for (const r of (repeaters ?? []) as unknown as RepeaterSummary[]) {
+      repeaterMap[r.id] = r;
+    }
+  }
 
   return (
     <Card>
@@ -48,7 +65,7 @@ export default async function PendingChangesPage() {
             Errore: {error.message}
           </p>
         )}
-        <PendingChangesTable changes={changes} />
+        <PendingChangesTable changes={changes} repeaterMap={repeaterMap} />
       </CardContent>
     </Card>
   );
