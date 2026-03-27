@@ -1,19 +1,22 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+
+const FILTER_OPTIONS = [
+  { value: "all", label: "Tutti" },
+  { value: "new", label: "Nuovo" },
+  { value: "update", label: "Aggiornamento" },
+  { value: "deactivate", label: "Disattivazione" },
+  { value: "reactivate", label: "Riattivazione" },
+] as const;
 
 export function PendingChangesFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const current = searchParams.get("type") ?? "all";
 
-  function handleTypeChange(value: string) {
+  function handleClick(value: string) {
     const params = new URLSearchParams(searchParams.toString());
     if (value === "all") {
       params.delete("type");
@@ -24,22 +27,17 @@ export function PendingChangesFilters() {
   }
 
   return (
-    <div className="flex items-center gap-3">
-      <Select
-        value={searchParams.get("type") ?? "all"}
-        onValueChange={handleTypeChange}
-      >
-        <SelectTrigger className="w-48">
-          <SelectValue placeholder="Filtra tipologia" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Tutte le tipologie</SelectItem>
-          <SelectItem value="new">Nuovo</SelectItem>
-          <SelectItem value="update">Aggiornamento</SelectItem>
-          <SelectItem value="deactivate">Disattivazione</SelectItem>
-          <SelectItem value="reactivate">Riattivazione</SelectItem>
-        </SelectContent>
-      </Select>
+    <div className="flex flex-wrap items-center gap-2">
+      {FILTER_OPTIONS.map((opt) => (
+        <Badge
+          key={opt.value}
+          variant={current === opt.value ? "default" : "outline"}
+          className="cursor-pointer select-none px-3 py-1.5 text-sm"
+          onClick={() => handleClick(opt.value)}
+        >
+          {opt.label}
+        </Badge>
+      ))}
     </div>
   );
 }

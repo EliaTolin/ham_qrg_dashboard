@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      broadcast_notifications: {
+        Row: {
+          contents: Json
+          created_at: string
+          data: Json | null
+          headings: Json
+          id: string
+          recipient_count: number
+          sent_by: string | null
+        }
+        Insert: {
+          contents: Json
+          created_at?: string
+          data?: Json | null
+          headings: Json
+          id?: string
+          recipient_count?: number
+          sent_by?: string | null
+        }
+        Update: {
+          contents?: Json
+          created_at?: string
+          data?: Json | null
+          headings?: Json
+          id?: string
+          recipient_count?: number
+          sent_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_notifications_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       iz8wnh_points_to_sync: {
         Row: {
           area: string
@@ -344,6 +382,7 @@ export type Database = {
           frequency_hz: number
           geom: unknown
           id: string
+          is_active: boolean
           last_seen_at: string | null
           lat: number | null
           locality: string | null
@@ -365,6 +404,7 @@ export type Database = {
           frequency_hz: number
           geom?: unknown
           id?: string
+          is_active?: boolean
           last_seen_at?: string | null
           lat?: number | null
           locality?: string | null
@@ -386,6 +426,7 @@ export type Database = {
           frequency_hz?: number
           geom?: unknown
           id?: string
+          is_active?: boolean
           last_seen_at?: string | null
           lat?: number | null
           locality?: string | null
@@ -419,6 +460,62 @@ export type Database = {
           role?: Database["public"]["Enums"]["app_role"]
         }
         Relationships: []
+      }
+      sync_pending_changes: {
+        Row: {
+          change_type: string
+          created_at: string
+          diff: Json
+          external_id: string
+          id: string
+          local_updated_at: string | null
+          remote_data: Json
+          remote_updated_at: string | null
+          repeater_id: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+          suggested_winner: string
+        }
+        Insert: {
+          change_type: string
+          created_at?: string
+          diff?: Json
+          external_id: string
+          id?: string
+          local_updated_at?: string | null
+          remote_data: Json
+          remote_updated_at?: string | null
+          repeater_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggested_winner?: string
+        }
+        Update: {
+          change_type?: string
+          created_at?: string
+          diff?: Json
+          external_id?: string
+          id?: string
+          local_updated_at?: string | null
+          remote_data?: Json
+          remote_updated_at?: string | null
+          repeater_id?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+          suggested_winner?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sync_pending_changes_repeater_id_fkey"
+            columns: ["repeater_id"]
+            isOneToOne: false
+            referencedRelation: "repeaters"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sync_runs: {
         Row: {
@@ -669,6 +766,7 @@ export type Database = {
         | "reports.manage"
         | "users.manage"
         | "sync.trigger"
+        | "sync.review"
       app_role: "admin" | "viewer" | "bridge_manager" | "report_manager"
       feedback_type: "like" | "down"
       network_kind: "dmr" | "c4fm" | "dstar" | "voip" | "mixed" | "other"
@@ -824,6 +922,7 @@ export const Constants = {
         "reports.manage",
         "users.manage",
         "sync.trigger",
+        "sync.review",
       ],
       app_role: ["admin", "viewer", "bridge_manager", "report_manager"],
       feedback_type: ["like", "down"],

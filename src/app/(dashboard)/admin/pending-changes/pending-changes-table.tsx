@@ -191,7 +191,7 @@ function ChangeDetail({
   change: SyncPendingChange;
   localRepeater?: RepeaterSummary;
 }) {
-  const rd = change.remote_data;
+  const rd = change.remote_data as Record<string, string | number | boolean | null | undefined>;
   const diff = change.diff;
   const diffKeys = Object.keys(diff).filter((k) => k !== "scope");
 
@@ -273,7 +273,7 @@ function ChangeDetail({
             {tipologia && (
               <div>Tipologia: <span className="text-foreground">{tipologia}</span></div>
             )}
-            {rd.Frequenza && (
+            {rd.Frequenza != null && (
               <div>Frequenza: <span className="text-foreground">{String(rd.Frequenza)} MHz</span></div>
             )}
             {diff.AutoON && (
@@ -306,7 +306,7 @@ function ChangeDetail({
       {/* Repeater fields */}
       <div className="rounded-md border divide-y">
         {diffKeys.map((field) => {
-          const d = diff[field];
+          const d = diff[field] as { local: unknown; remote: unknown };
           return (
             <DiffRow
               key={field}

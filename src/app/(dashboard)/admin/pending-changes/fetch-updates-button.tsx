@@ -57,13 +57,13 @@ export function FetchUpdatesButton() {
         );
       }
 
-      router.refresh();
     } catch (err) {
       toast.error(
         `Errore: ${err instanceof Error ? err.message : "Errore sconosciuto"}`
       );
     } finally {
       setLoading(false);
+      router.refresh();
     }
   }
 

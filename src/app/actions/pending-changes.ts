@@ -1,29 +1,10 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { hasPermission, getUserRole } from "@/lib/rbac";
+import { hasPermission } from "@/lib/rbac";
 import type { SyncPendingChange } from "@/lib/types";
 
 const TABLE = "sync_pending_changes" as never;
-
-const TIPOLOGIA_MAP: Record<string, string> = {
-  FM: "ANALOG",
-  fm: "ANALOG",
-  DMR: "DMR",
-  C4FM: "C4FM",
-  DS: "DSTAR",
-  EL: "ECHOLINK",
-  SVX: "SVX",
-  SVXLink: "SVX",
-  SWXLink: "SVX",
-  ATV: "ATV",
-  Beacon: "BEACON",
-  LN: "ANALOG",
-  PK: "APRS",
-  NXDN: "NXDN",
-  AllStar: "ALLSTAR",
-  Winlink: "WINLINK",
-};
 
 export async function getPendingChanges(status?: string) {
   const canReview = await hasPermission("sync.review");
@@ -46,68 +27,39 @@ export async function getPendingChanges(status?: string) {
   return { data: (data ?? []) as unknown as SyncPendingChange[] };
 }
 
-export async function approvePendingChange(changeId: string) {
+async function invokeApply(changeId: string, action: "approve" | "reject") {
   const canReview = await hasPermission("sync.review");
   if (!canReview) return { error: "Non autorizzato" };
 
   const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  // 1) Fetch the pending change
-  const { data: change, error: fetchErr } = await supabase
-    .from(TABLE)
-    .select("*")
-    .eq("id", changeId)
-    .single();
+  const { data, error } = await supabase.functions.invoke(
+    "apply_pending_change",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        change_id: changeId,
+        action,
+        user_id: user?.id,
+      }),
+      headers: { "Content-Type": "application/json" },
+    }
+  );
 
-  if (fetchErr || !change) {
-    return { error: fetchErr?.message ?? "Modifica non trovata" };
-  }
-
-  const pc = change as unknown as SyncPendingChange;
-  if (pc.status !== "pending") {
-    return { error: "Questa modifica è già stata gestita" };
-  }
-
-  // 2) Apply the change based on type
-  const applyResult = await applyChange(supabase, pc);
-  if (applyResult.error) return applyResult;
-
-  // 3) Mark as approved
-  const { data: { user } } = await supabase.auth.getUser();
-  const { error: updateErr } = await supabase
-    .from(TABLE)
-    .update({
-      status: "approved",
-      reviewed_by: user?.id,
-      reviewed_at: new Date().toISOString(),
-    } as never)
-    .eq("id", changeId);
-
-  if (updateErr) return { error: updateErr.message };
-
+  if (error) return { error: error.message };
+  if (data?.error) return { error: data.error };
   return { success: true };
 }
 
+export async function approvePendingChange(changeId: string) {
+  return invokeApply(changeId, "approve");
+}
+
 export async function rejectPendingChange(changeId: string) {
-  const canReview = await hasPermission("sync.review");
-  if (!canReview) return { error: "Non autorizzato" };
-
-  const supabase = await createClient();
-
-  const { data: { user } } = await supabase.auth.getUser();
-  const { error } = await supabase
-    .from(TABLE)
-    .update({
-      status: "rejected",
-      reviewed_by: user?.id,
-      reviewed_at: new Date().toISOString(),
-    } as never)
-    .eq("id", changeId)
-    .eq("status", "pending");
-
-  if (error) return { error: error.message };
-
-  return { success: true };
+  return invokeApply(changeId, "reject");
 }
 
 export async function bulkApprovePendingChanges(changeIds: string[]) {
@@ -150,142 +102,4 @@ export async function deleteAllPendingChanges() {
 
   if (error) return { error: error.message };
   return { success: true };
-}
-
-// --- Private helpers ---
-
-// deno-lint-ignore no-explicit-any
-async function applyChange(supabase: any, pc: SyncPendingChange) {
-  const remoteData = pc.remote_data;
-
-  switch (pc.change_type) {
-    case "deactivate": {
-      if (!pc.repeater_id) return { error: "repeater_id mancante per deactivate" };
-
-      const scope = pc.diff.scope?.remote as string | undefined;
-
-      if (scope === "access") {
-        // Delete the specific access by external_id (iz8wnh record ID)
-        const { error: delErr } = await supabase
-          .from("repeater_access")
-          .delete()
-          .eq("external_id", pc.external_id);
-        if (delErr) return { error: delErr.message };
-
-        // Check if repeater has any remaining accesses
-        const { count } = await supabase
-          .from("repeater_access")
-          .select("id", { count: "exact", head: true })
-          .eq("repeater_id", pc.repeater_id);
-
-        // No accesses left → deactivate the repeater
-        if (count === 0) {
-          const { error } = await supabase
-            .from("repeaters")
-            .update({ is_active: false })
-            .eq("id", pc.repeater_id);
-          if (error) return { error: error.message };
-        }
-      } else {
-        // Deactivate the whole repeater
-        const { error } = await supabase
-          .from("repeaters")
-          .update({ is_active: false })
-          .eq("id", pc.repeater_id);
-        if (error) return { error: error.message };
-      }
-      return { success: true };
-    }
-
-    case "reactivate": {
-      if (!pc.repeater_id) return { error: "repeater_id mancante per reactivate" };
-      const { error } = await supabase
-        .from("repeaters")
-        .update({ is_active: true })
-        .eq("id", pc.repeater_id);
-      if (error) return { error: error.message };
-      return { success: true };
-    }
-
-    case "update": {
-      if (!pc.repeater_id) return { error: "repeater_id mancante per update" };
-      // Apply only the changed fields from the diff
-      const updates: Record<string, unknown> = {};
-      for (const [field, values] of Object.entries(pc.diff)) {
-        updates[field] = values.remote;
-      }
-      if (Object.keys(updates).length === 0) return { success: true };
-
-      const { error } = await supabase
-        .from("repeaters")
-        .update(updates)
-        .eq("id", pc.repeater_id);
-      if (error) return { error: error.message };
-      return { success: true };
-    }
-
-    case "new": {
-      // Insert repeater + access from remote_data
-      const freqHz = Math.round(parseFloat(remoteData.Frequenza as string) * 1_000_000);
-      const lat = parseFloat(remoteData.Lat as string);
-      const lon = parseFloat(remoteData.Long as string);
-      const shiftHz = Math.round(parseFloat(remoteData.Shift as string) * 1_000_000);
-
-      const { data: newRepeater, error: repErr } = await supabase
-        .from("repeaters")
-        .insert({
-          external_id: `${freqHz}_${remoteData.Locator}`,
-          name: remoteData.Ripetitore || null,
-          callsign: remoteData.Identificativo || null,
-          frequency_hz: freqHz,
-          shift_hz: shiftHz,
-          shift_raw: remoteData.Shift,
-          locality: (remoteData.Localita as string)?.replace(/\n/g, " ").trim() || null,
-          locator: remoteData.Locator,
-          lat: isNaN(lat) ? null : lat,
-          lon: isNaN(lon) ? null : lon,
-          source: "iz8wnh",
-          is_active: true,
-          last_seen_at: new Date().toISOString(),
-        })
-        .select("id")
-        .single();
-
-      if (repErr || !newRepeater) return { error: repErr?.message ?? "Inserimento repeater fallito" };
-
-      // Create the access if tipologia is mappable
-      const tipologia = remoteData.Tipologia as string | undefined;
-      const accessMode = tipologia ? TIPOLOGIA_MAP[tipologia] : null;
-      if (accessMode) {
-        const ctcssVal = parseFloat(remoteData.Tono as string);
-        const ctcssHz = ctcssVal > 0 && ctcssVal <= 300 ? ctcssVal : null;
-        let colorCode: number | null = null;
-        if (accessMode === "DMR" && remoteData.ColorCode) {
-          const cc = parseInt(remoteData.ColorCode as string);
-          if (cc >= 0 && cc <= 15) colorCode = cc;
-        }
-        let nodeId: number | null = null;
-        if (remoteData.Stanza) {
-          const parsed = parseInt(remoteData.Stanza as string);
-          if (!isNaN(parsed)) nodeId = parsed;
-        }
-
-        await supabase.from("repeater_access").insert({
-          repeater_id: newRepeater.id,
-          external_id: pc.external_id,
-          mode: accessMode,
-          ctcss_tx_hz: ctcssHz,
-          color_code: colorCode,
-          node_id: nodeId,
-          source: "iz8wnh",
-          last_seen_at: new Date().toISOString(),
-        });
-      }
-
-      return { success: true };
-    }
-
-    default:
-      return { error: `Tipo di modifica sconosciuto: ${pc.change_type}` };
-  }
 }

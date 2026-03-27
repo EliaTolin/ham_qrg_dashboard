@@ -76,17 +76,17 @@ export default async function PendingChangesPage({
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <Suspense>
-              <PendingChangesFilters />
-            </Suspense>
             <DeleteAllButton />
             <FetchUpdatesButton />
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        <Suspense>
+          <PendingChangesFilters />
+        </Suspense>
         {error && (
-          <p className="text-sm text-destructive mb-4">
+          <p className="text-sm text-destructive">
             Errore: {error.message}
           </p>
         )}
