@@ -6,6 +6,25 @@ import type { SyncPendingChange } from "@/lib/types";
 
 const TABLE = "sync_pending_changes" as never;
 
+const TIPOLOGIA_MAP: Record<string, string> = {
+  FM: "ANALOG",
+  fm: "ANALOG",
+  DMR: "DMR",
+  C4FM: "C4FM",
+  DS: "DSTAR",
+  EL: "ECHOLINK",
+  SVX: "SVX",
+  SVXLink: "SVX",
+  SWXLink: "SVX",
+  ATV: "ATV",
+  Beacon: "BEACON",
+  LN: "ANALOG",
+  PK: "APRS",
+  NXDN: "NXDN",
+  AllStar: "ALLSTAR",
+  Winlink: "WINLINK",
+};
+
 export async function getPendingChanges(status?: string) {
   const canReview = await hasPermission("sync.review");
   if (!canReview) return { error: "Non autorizzato" };
@@ -206,29 +225,63 @@ async function applyChange(supabase: any, pc: SyncPendingChange) {
     }
 
     case "new": {
-      // For new repeaters, build the insert from remote_data mapped fields
+      // Insert repeater + access from remote_data
       const freqHz = Math.round(parseFloat(remoteData.Frequenza as string) * 1_000_000);
       const lat = parseFloat(remoteData.Lat as string);
       const lon = parseFloat(remoteData.Long as string);
       const shiftHz = Math.round(parseFloat(remoteData.Shift as string) * 1_000_000);
 
-      const { error } = await supabase.from("repeaters").insert({
-        external_id: pc.external_id,
-        name: remoteData.Ripetitore || null,
-        callsign: remoteData.Identificativo || null,
-        frequency_hz: freqHz,
-        shift_hz: shiftHz,
-        shift_raw: remoteData.Shift,
-        locality: (remoteData.Localita as string)?.replace(/\n/g, " ").trim() || null,
-        locator: remoteData.Locator,
-        lat: isNaN(lat) ? null : lat,
-        lon: isNaN(lon) ? null : lon,
-        source: "iz8wnh",
-        is_active: true,
-        last_seen_at: new Date().toISOString(),
-      });
+      const { data: newRepeater, error: repErr } = await supabase
+        .from("repeaters")
+        .insert({
+          external_id: `${freqHz}_${remoteData.Locator}`,
+          name: remoteData.Ripetitore || null,
+          callsign: remoteData.Identificativo || null,
+          frequency_hz: freqHz,
+          shift_hz: shiftHz,
+          shift_raw: remoteData.Shift,
+          locality: (remoteData.Localita as string)?.replace(/\n/g, " ").trim() || null,
+          locator: remoteData.Locator,
+          lat: isNaN(lat) ? null : lat,
+          lon: isNaN(lon) ? null : lon,
+          source: "iz8wnh",
+          is_active: true,
+          last_seen_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
 
-      if (error) return { error: error.message };
+      if (repErr || !newRepeater) return { error: repErr?.message ?? "Inserimento repeater fallito" };
+
+      // Create the access if tipologia is mappable
+      const tipologia = remoteData.Tipologia as string | undefined;
+      const accessMode = tipologia ? TIPOLOGIA_MAP[tipologia] : null;
+      if (accessMode) {
+        const ctcssVal = parseFloat(remoteData.Tono as string);
+        const ctcssHz = ctcssVal > 0 && ctcssVal <= 300 ? ctcssVal : null;
+        let colorCode: number | null = null;
+        if (accessMode === "DMR" && remoteData.ColorCode) {
+          const cc = parseInt(remoteData.ColorCode as string);
+          if (cc >= 0 && cc <= 15) colorCode = cc;
+        }
+        let nodeId: number | null = null;
+        if (remoteData.Stanza) {
+          const parsed = parseInt(remoteData.Stanza as string);
+          if (!isNaN(parsed)) nodeId = parsed;
+        }
+
+        await supabase.from("repeater_access").insert({
+          repeater_id: newRepeater.id,
+          external_id: pc.external_id,
+          mode: accessMode,
+          ctcss_tx_hz: ctcssHz,
+          color_code: colorCode,
+          node_id: nodeId,
+          source: "iz8wnh",
+          last_seen_at: new Date().toISOString(),
+        });
+      }
+
       return { success: true };
     }
 
