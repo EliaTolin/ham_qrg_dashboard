@@ -1,26 +1,48 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { hasPermission } from "@/lib/rbac";
 import { createClient } from "@/lib/supabase/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ClipboardCheck } from "lucide-react";
-import type { SyncPendingChange } from "@/lib/types";
+import type { SyncPendingChange, PendingChangeType } from "@/lib/types";
 import { PendingChangesTable, type RepeaterSummary } from "./pending-changes-table";
 import { FetchUpdatesButton } from "./fetch-updates-button";
 import { DeleteAllButton } from "./delete-all-button";
+import { PendingChangesFilters } from "./pending-changes-filters";
 
-export default async function PendingChangesPage() {
+const VALID_TYPES = new Set<string>(["new", "update", "deactivate", "reactivate"]);
+
+export default async function PendingChangesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string }>;
+}) {
   const canReview = await hasPermission("sync.review");
   if (!canReview) redirect("/");
 
+  const params = await searchParams;
   const supabase = await createClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("sync_pending_changes" as never)
     .select("*")
     .eq("status", "pending")
     .order("created_at", { ascending: false })
     .limit(200);
 
+  let countQuery = supabase
+    .from("sync_pending_changes" as never)
+    .select("*", { count: "exact", head: true })
+    .eq("status", "pending");
+
+  if (params.type && VALID_TYPES.has(params.type)) {
+    query = query.eq("change_type", params.type as PendingChangeType);
+    countQuery = countQuery.eq("change_type", params.type as PendingChangeType);
+  }
+
+  const [{ data, error }, { count }] = await Promise.all([query, countQuery]);
+
+  const totalCount = count ?? 0;
   const changes = (data ?? []) as unknown as SyncPendingChange[];
 
   // Fetch linked repeaters with accesses for context
@@ -47,13 +69,16 @@ export default async function PendingChangesPage() {
           <CardTitle className="flex items-center gap-2">
             <ClipboardCheck className="h-5 w-5" />
             Pending Changes iz8wnh
-            {changes.length > 0 && (
+            {totalCount > 0 && (
               <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
-                {changes.length}
+                {totalCount}
               </span>
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
+            <Suspense>
+              <PendingChangesFilters />
+            </Suspense>
             <DeleteAllButton />
             <FetchUpdatesButton />
           </div>
