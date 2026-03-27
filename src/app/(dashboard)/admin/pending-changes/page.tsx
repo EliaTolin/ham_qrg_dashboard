@@ -15,7 +15,7 @@ const VALID_TYPES = new Set<string>(["new", "update", "deactivate", "reactivate"
 export default async function PendingChangesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; page?: string }>;
 }) {
   const canReview = await hasPermission("sync.review");
   if (!canReview) redirect("/");
@@ -23,12 +23,16 @@ export default async function PendingChangesPage({
   const params = await searchParams;
   const supabase = await createClient();
 
+  const PAGE_SIZE = 30;
+  const page = Math.max(1, parseInt(params.page ?? "1", 10));
+  const from = (page - 1) * PAGE_SIZE;
+
   let query = supabase
     .from("sync_pending_changes" as never)
     .select("*")
     .eq("status", "pending")
     .order("created_at", { ascending: false })
-    .limit(200);
+    .range(from, from + PAGE_SIZE - 1);
 
   let countQuery = supabase
     .from("sync_pending_changes" as never)
@@ -43,6 +47,7 @@ export default async function PendingChangesPage({
   const [{ data, error }, { count }] = await Promise.all([query, countQuery]);
 
   const totalCount = count ?? 0;
+  const totalPages = Math.ceil(totalCount / PAGE_SIZE);
   const changes = (data ?? []) as unknown as SyncPendingChange[];
 
   // Fetch linked repeaters with accesses for context
@@ -90,7 +95,13 @@ export default async function PendingChangesPage({
             Errore: {error.message}
           </p>
         )}
-        <PendingChangesTable changes={changes} repeaterMap={repeaterMap} />
+        <PendingChangesTable
+          changes={changes}
+          repeaterMap={repeaterMap}
+          page={page}
+          totalPages={totalPages}
+          totalCount={totalCount}
+        />
       </CardContent>
     </Card>
   );

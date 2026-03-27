@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,10 @@ import {
   X,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   ArrowRight,
+  ChevronsLeft,
+  ChevronsRight,
 } from "lucide-react";
 
 // --- Constants ---
@@ -405,11 +408,18 @@ function LocalRepeaterCard({ repeater }: { repeater: RepeaterSummary }) {
 export function PendingChangesTable({
   changes,
   repeaterMap,
+  page,
+  totalPages,
+  totalCount,
 }: {
   changes: SyncPendingChange[];
   repeaterMap: Record<string, RepeaterSummary>;
+  page: number;
+  totalPages: number;
+  totalCount: number;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -491,6 +501,16 @@ export function PendingChangesTable({
       }
     });
   };
+
+  function goToPage(p: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    if (p <= 1) {
+      params.delete("page");
+    } else {
+      params.set("page", String(p));
+    }
+    router.push(`?${params.toString()}`);
+  }
 
   if (changes.length === 0) {
     return (
@@ -690,6 +710,53 @@ export function PendingChangesTable({
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            Pagina {page} di {totalPages} ({totalCount} risultati)
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => goToPage(1)}
+              disabled={page <= 1}
+            >
+              <ChevronsLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => goToPage(page - 1)}
+              disabled={page <= 1}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => goToPage(page + 1)}
+              disabled={page >= totalPages}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => goToPage(totalPages)}
+              disabled={page >= totalPages}
+            >
+              <ChevronsRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

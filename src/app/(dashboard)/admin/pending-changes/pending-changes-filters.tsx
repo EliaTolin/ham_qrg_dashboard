@@ -23,6 +23,7 @@ export function PendingChangesFilters() {
     } else {
       params.set("type", value);
     }
+    params.delete("page");
     router.push(`?${params.toString()}`);
   }
 
