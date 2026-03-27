@@ -183,6 +183,16 @@ function ActivationDiff({
   change: SyncPendingChange;
 }) {
   const isDeactivate = change.change_type === "deactivate";
+  const scope = change.diff.scope?.remote as string | undefined;
+  const tipologia = change.remote_data.Tipologia as string | undefined;
+  const isAccessLevel = scope === "access";
+
+  const label = isDeactivate
+    ? isAccessLevel
+      ? `Disattivare accesso ${tipologia ?? "?"}`
+      : "Disattivare ripetitore"
+    : "Riattivare ripetitore";
+
   return (
     <div className="space-y-1 font-mono text-sm">
       <div className={`flex items-center gap-2 rounded px-3 py-2 ${
@@ -191,10 +201,20 @@ function ActivationDiff({
           : "bg-green-500/10 text-green-700 dark:text-green-400"
       }`}>
         <ArrowRight className="h-3 w-3 shrink-0" />
-        <span className="font-semibold">
-          {isDeactivate ? "Ponte da DISATTIVARE" : "Ponte da RIATTIVARE"}
-        </span>
+        <span className="font-semibold">{label}</span>
       </div>
+      {tipologia && (
+        <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
+          <span className="text-muted-foreground min-w-[120px]">Tipologia</span>
+          <span>{tipologia}</span>
+        </div>
+      )}
+      {change.remote_data.Frequenza && (
+        <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
+          <span className="text-muted-foreground min-w-[120px]">Frequenza</span>
+          <span>{String(change.remote_data.Frequenza)} MHz</span>
+        </div>
+      )}
       {change.diff.AutoON && (
         <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
           <span className="text-muted-foreground min-w-[120px]">AutoON</span>
