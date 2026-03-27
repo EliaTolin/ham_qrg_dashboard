@@ -142,11 +142,39 @@ async function applyChange(supabase: any, pc: SyncPendingChange) {
   switch (pc.change_type) {
     case "deactivate": {
       if (!pc.repeater_id) return { error: "repeater_id mancante per deactivate" };
-      const { error } = await supabase
-        .from("repeaters")
-        .update({ is_active: false })
-        .eq("id", pc.repeater_id);
-      if (error) return { error: error.message };
+
+      const scope = pc.diff.scope?.remote as string | undefined;
+
+      if (scope === "access") {
+        // Delete the specific access by external_id (iz8wnh record ID)
+        const { error: delErr } = await supabase
+          .from("repeater_access")
+          .delete()
+          .eq("external_id", pc.external_id);
+        if (delErr) return { error: delErr.message };
+
+        // Check if repeater has any remaining accesses
+        const { count } = await supabase
+          .from("repeater_access")
+          .select("id", { count: "exact", head: true })
+          .eq("repeater_id", pc.repeater_id);
+
+        // No accesses left → deactivate the repeater
+        if (count === 0) {
+          const { error } = await supabase
+            .from("repeaters")
+            .update({ is_active: false })
+            .eq("id", pc.repeater_id);
+          if (error) return { error: error.message };
+        }
+      } else {
+        // Deactivate the whole repeater
+        const { error } = await supabase
+          .from("repeaters")
+          .update({ is_active: false })
+          .eq("id", pc.repeater_id);
+        if (error) return { error: error.message };
+      }
       return { success: true };
     }
 
