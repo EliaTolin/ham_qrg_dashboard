@@ -21,7 +21,15 @@ import {
   bulkRejectPendingChanges,
 } from "@/app/actions/pending-changes";
 import type { SyncPendingChange, PendingChangeType } from "@/lib/types";
-import { Check, X, ChevronDown, ChevronRight, Plus, Minus, ArrowRight } from "lucide-react";
+import {
+  Check,
+  X,
+  ChevronDown,
+  ChevronRight,
+  ArrowRight,
+} from "lucide-react";
+
+// --- Constants ---
 
 const CHANGE_TYPE_VARIANT: Record<
   PendingChangeType,
@@ -40,10 +48,7 @@ const CHANGE_TYPE_LABEL: Record<PendingChangeType, string> = {
   reactivate: "Riattivazione",
 };
 
-const WINNER_VARIANT: Record<
-  string,
-  "default" | "secondary" | "outline"
-> = {
+const WINNER_VARIANT: Record<string, "default" | "secondary" | "outline"> = {
   remote: "default",
   local: "secondary",
   unknown: "outline",
@@ -66,170 +71,9 @@ const FIELD_LABELS: Record<string, string> = {
   "access.ctcss_tx_hz": "CTCSS TX",
   "access.color_code": "Color Code",
   "access.node_id": "Node ID",
-  Ripetitore: "Nome",
-  Identificativo: "Nominativo",
-  Frequenza: "Frequenza",
-  Shift: "Shift",
-  Tono: "Tono CTCSS",
-  ColorCode: "Color Code",
-  Stanza: "Stanza/Node",
-  Rete: "Rete",
-  Lat: "Latitudine",
-  Long: "Longitudine",
-  Localita: "Località",
-  Locator: "Locator",
-  Tipologia: "Tipologia",
-  Ultima_Modifica: "Ultima Modifica",
 };
 
-function fieldLabel(field: string): string {
-  return FIELD_LABELS[field] ?? field;
-}
-
-function formatValue(field: string, value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
-  if (field === "frequency_hz" || field === "shift_hz") {
-    const mhz = (value as number) / 1_000_000;
-    return `${mhz.toFixed(4)} MHz`;
-  }
-  if (typeof value === "boolean") return value ? "Sì" : "No";
-  if (typeof value === "number") return value.toString();
-  return String(value);
-}
-
-// Fields to show for new repeaters (from remote_data)
-const NEW_REPEATER_FIELDS = [
-  "Ripetitore",
-  "Identificativo",
-  "Frequenza",
-  "Shift",
-  "Tipologia",
-  "Tono",
-  "ColorCode",
-  "Stanza",
-  "Rete",
-  "Localita",
-  "Locator",
-  "Lat",
-  "Long",
-  "Ultima_Modifica",
-] as const;
-
-/** Git-style diff for update changes */
-function UpdateDiff({
-  diff,
-}: {
-  diff: Record<string, { local: unknown; remote: unknown }>;
-}) {
-  const keys = Object.keys(diff);
-  if (keys.length === 0) return null;
-
-  return (
-    <div className="space-y-1 font-mono text-sm">
-      {keys.map((field) => {
-        const d = diff[field];
-        return (
-          <div key={field} className="space-y-0.5">
-            <div className="text-xs font-semibold text-muted-foreground">
-              {fieldLabel(field)}
-            </div>
-            <div className="flex items-start gap-2 rounded bg-red-500/10 px-3 py-1 text-red-700 dark:text-red-400">
-              <Minus className="mt-0.5 h-3 w-3 shrink-0" />
-              <span>{formatValue(field, d.local)}</span>
-            </div>
-            <div className="flex items-start gap-2 rounded bg-green-500/10 px-3 py-1 text-green-700 dark:text-green-400">
-              <Plus className="mt-0.5 h-3 w-3 shrink-0" />
-              <span>{formatValue(field, d.remote)}</span>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Shows all fields for a new repeater */
-function NewRepeaterDetail({
-  remoteData,
-}: {
-  remoteData: Record<string, unknown>;
-}) {
-  return (
-    <div className="space-y-1 font-mono text-sm">
-      {NEW_REPEATER_FIELDS.map((field) => {
-        const value = remoteData[field];
-        if (value === null || value === undefined || value === "") return null;
-        return (
-          <div
-            key={field}
-            className="flex items-start gap-2 rounded bg-green-500/10 px-3 py-1 text-green-700 dark:text-green-400"
-          >
-            <Plus className="mt-0.5 h-3 w-3 shrink-0" />
-            <span className="font-semibold text-muted-foreground min-w-[120px]">
-              {fieldLabel(field)}
-            </span>
-            <span>{String(value)}</span>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/** Shows activation/deactivation detail */
-function ActivationDiff({
-  change,
-}: {
-  change: SyncPendingChange;
-}) {
-  const isDeactivate = change.change_type === "deactivate";
-  const scope = change.diff.scope?.remote as string | undefined;
-  const tipologia = change.remote_data.Tipologia as string | undefined;
-  const isAccessLevel = scope === "access";
-
-  const label = isDeactivate
-    ? isAccessLevel
-      ? `Disattivare accesso ${tipologia ?? "?"}`
-      : "Disattivare ripetitore"
-    : "Riattivare ripetitore";
-
-  return (
-    <div className="space-y-1 font-mono text-sm">
-      <div className={`flex items-center gap-2 rounded px-3 py-2 ${
-        isDeactivate
-          ? "bg-red-500/10 text-red-700 dark:text-red-400"
-          : "bg-green-500/10 text-green-700 dark:text-green-400"
-      }`}>
-        <ArrowRight className="h-3 w-3 shrink-0" />
-        <span className="font-semibold">{label}</span>
-      </div>
-      {tipologia && (
-        <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
-          <span className="text-muted-foreground min-w-[120px]">Tipologia</span>
-          <span>{tipologia}</span>
-        </div>
-      )}
-      {change.remote_data.Frequenza && (
-        <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
-          <span className="text-muted-foreground min-w-[120px]">Frequenza</span>
-          <span>{String(change.remote_data.Frequenza)} MHz</span>
-        </div>
-      )}
-      {change.diff.AutoON && (
-        <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
-          <span className="text-muted-foreground min-w-[120px]">AutoON</span>
-          <span>{String(change.diff.AutoON.remote)}</span>
-        </div>
-      )}
-      {change.diff.ManualON && (
-        <div className="flex items-center gap-2 rounded bg-muted px-3 py-1">
-          <span className="text-muted-foreground min-w-[120px]">ManualON</span>
-          <span>{String(change.diff.ManualON.remote)}</span>
-        </div>
-      )}
-    </div>
-  );
-}
+// --- Types ---
 
 export interface RepeaterSummary {
   id: string;
@@ -249,75 +93,314 @@ export interface RepeaterSummary {
   }[];
 }
 
-function formatFrequency(hz: number): string {
+// --- Helpers ---
+
+function fieldLabel(field: string): string {
+  return FIELD_LABELS[field] ?? field;
+}
+
+function fmtFreq(hz: number): string {
   return (hz / 1_000_000).toFixed(4) + " MHz";
 }
 
-/** Card showing local repeater info */
-function RepeaterInfoCard({ repeater }: { repeater: RepeaterSummary }) {
+function fmtShift(hz: number): string {
+  return (hz > 0 ? "+" : "") + (hz / 1_000_000).toFixed(1) + " MHz";
+}
+
+function fmtVal(field: string, value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  if (field === "frequency_hz" || field === "shift_hz")
+    return fmtFreq(value as number);
+  if (typeof value === "boolean") return value ? "Sì" : "No";
+  if (typeof value === "number") return value.toString();
+  return String(value);
+}
+
+// --- Detail sub-components ---
+
+/** Two-column before/after row */
+function DiffRow({
+  label,
+  before,
+  after,
+  changed,
+}: {
+  label: string;
+  before: string;
+  after: string;
+  changed: boolean;
+}) {
   return (
-    <div className="rounded-md border bg-background p-3 space-y-1 text-sm mb-3">
-      <div className="font-semibold text-base">
-        {repeater.callsign ?? "—"}{" "}
-        {repeater.name && (
-          <span className="font-normal text-muted-foreground">
-            — {repeater.name}
+    <div
+      className={`grid grid-cols-[140px_1fr_1fr] gap-2 px-3 py-1.5 rounded text-sm ${
+        changed ? "bg-amber-500/10" : ""
+      }`}
+    >
+      <span className="font-medium text-muted-foreground">{label}</span>
+      <span className={changed ? "line-through text-muted-foreground" : ""}>
+        {before}
+      </span>
+      <span className={changed ? "font-semibold text-foreground" : ""}>
+        {after}
+      </span>
+    </div>
+  );
+}
+
+/** Section header for the detail panels */
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1 mt-3 first:mt-0">
+      {children}
+    </div>
+  );
+}
+
+/** Access badge */
+function AccessBadge({
+  access,
+}: {
+  access: RepeaterSummary["repeater_access"][0];
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs">
+      <span className="font-semibold">{access.mode}</span>
+      {access.network?.name && (
+        <span className="text-muted-foreground">{access.network.name}</span>
+      )}
+      {access.ctcss_tx_hz != null && (
+        <span className="text-muted-foreground">
+          CTCSS {access.ctcss_tx_hz}
+        </span>
+      )}
+      {access.color_code != null && (
+        <span className="text-muted-foreground">CC{access.color_code}</span>
+      )}
+      {access.node_id != null && (
+        <span className="text-muted-foreground">#{access.node_id}</span>
+      )}
+    </span>
+  );
+}
+
+/** Full expanded detail for a pending change */
+function ChangeDetail({
+  change,
+  localRepeater,
+}: {
+  change: SyncPendingChange;
+  localRepeater?: RepeaterSummary;
+}) {
+  const rd = change.remote_data;
+  const diff = change.diff;
+  const diffKeys = Object.keys(diff).filter((k) => k !== "scope");
+
+  // --- NEW REPEATER ---
+  if (change.change_type === "new") {
+    return (
+      <div className="space-y-1">
+        <SectionHeader>Nuovo ripetitore da iz8wnh</SectionHeader>
+        <div className="rounded-md border bg-green-500/5 p-3 space-y-1 text-sm font-mono">
+          {[
+            ["Nominativo", rd.Identificativo],
+            ["Nome", rd.Ripetitore],
+            ["Frequenza", rd.Frequenza ? `${rd.Frequenza} MHz` : null],
+            ["Shift", rd.Shift ? `${rd.Shift} MHz` : null],
+            ["Tipologia", rd.Tipologia],
+            ["Tono CTCSS", rd.Tono && rd.Tono !== "0" ? rd.Tono : null],
+            ["Color Code", rd.ColorCode],
+            ["Node/Stanza", rd.Stanza],
+            ["Rete", rd.Rete],
+            ["Località", rd.Localita],
+            ["Locator", rd.Locator],
+            ["Coordinate", rd.Lat && rd.Long ? `${rd.Lat}, ${rd.Long}` : null],
+            ["Ultima modifica", rd.Ultima_Modifica],
+          ].map(([label, value]) =>
+            value ? (
+              <div key={label as string} className="grid grid-cols-[140px_1fr] gap-2 px-3 py-0.5">
+                <span className="text-muted-foreground">{label as string}</span>
+                <span className="text-green-700 dark:text-green-400">
+                  {String(value)}
+                </span>
+              </div>
+            ) : null
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- DEACTIVATE / REACTIVATE ---
+  if (
+    change.change_type === "deactivate" ||
+    change.change_type === "reactivate"
+  ) {
+    const isDeactivate = change.change_type === "deactivate";
+    const scope = diff.scope?.remote as string | undefined;
+    const tipologia = rd.Tipologia as string | undefined;
+    const isAccessLevel = scope === "access";
+
+    return (
+      <div className="space-y-2">
+        {/* Current state */}
+        {localRepeater && (
+          <>
+            <SectionHeader>Stato attuale nel nostro DB</SectionHeader>
+            <LocalRepeaterCard repeater={localRepeater} />
+          </>
+        )}
+
+        {/* What changes */}
+        <SectionHeader>Modifica proposta</SectionHeader>
+        <div
+          className={`rounded-md border p-3 text-sm ${
+            isDeactivate
+              ? "bg-red-500/5 border-red-500/20"
+              : "bg-green-500/5 border-green-500/20"
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-2">
+            <ArrowRight className="h-4 w-4" />
+            <span className="font-semibold">
+              {isDeactivate
+                ? isAccessLevel
+                  ? `Disattivare accesso ${tipologia ?? "?"}`
+                  : "Disattivare ripetitore"
+                : "Riattivare ripetitore"}
+            </span>
+          </div>
+          <div className="space-y-1 text-muted-foreground font-mono text-xs">
+            {tipologia && (
+              <div>Tipologia: <span className="text-foreground">{tipologia}</span></div>
+            )}
+            {rd.Frequenza && (
+              <div>Frequenza: <span className="text-foreground">{String(rd.Frequenza)} MHz</span></div>
+            )}
+            {diff.AutoON && (
+              <div>AutoON: <span className="text-foreground">{String(diff.AutoON.remote)}</span></div>
+            )}
+            {diff.ManualON && (
+              <div>ManualON: <span className="text-foreground">{String(diff.ManualON.remote)}</span></div>
+            )}
+          </div>
+          {isAccessLevel && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Solo questo accesso verrà rimosso. Se non restano altri accessi, il ripetitore verrà nascosto.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // --- UPDATE ---
+  return (
+    <div className="space-y-2">
+      {/* Header */}
+      <div className="grid grid-cols-[140px_1fr_1fr] gap-2 px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <span>Campo</span>
+        <span>Stato attuale (DB)</span>
+        <span>Proposta iz8wnh</span>
+      </div>
+
+      {/* Repeater fields */}
+      <div className="rounded-md border divide-y">
+        {diffKeys.map((field) => {
+          const d = diff[field];
+          return (
+            <DiffRow
+              key={field}
+              label={fieldLabel(field)}
+              before={fmtVal(field, d.local)}
+              after={fmtVal(field, d.remote)}
+              changed={true}
+            />
+          );
+        })}
+      </div>
+
+      {/* Unchanged context from local repeater */}
+      {localRepeater && (
+        <>
+          <SectionHeader>Contesto ripetitore (invariato)</SectionHeader>
+          <LocalRepeaterCard repeater={localRepeater} />
+        </>
+      )}
+
+      {/* Remote record extra info */}
+      {(rd.Tipologia || rd.Tono || rd.Rete) && (
+        <>
+          <SectionHeader>Info accesso da iz8wnh</SectionHeader>
+          <div className="rounded-md border bg-muted/30 p-3 font-mono text-xs space-y-0.5">
+            {rd.Tipologia && <div>Tipologia: {String(rd.Tipologia)}</div>}
+            {rd.Tono && rd.Tono !== "0" && (
+              <div>Tono CTCSS: {String(rd.Tono)}</div>
+            )}
+            {rd.ColorCode && <div>Color Code: {String(rd.ColorCode)}</div>}
+            {rd.Stanza && <div>Node/Stanza: {String(rd.Stanza)}</div>}
+            {rd.Rete && <div>Rete: {String(rd.Rete)}</div>}
+          </div>
+        </>
+      )}
+
+      {/* Timestamps */}
+      <div className="flex gap-4 text-xs text-muted-foreground pt-1">
+        {change.remote_updated_at && (
+          <span>
+            Aggiornato da iz8wnh:{" "}
+            {new Date(change.remote_updated_at).toLocaleString()}
           </span>
         )}
-        {!repeater.is_active && (
-          <span className="ml-2 rounded bg-destructive/10 px-1.5 py-0.5 text-xs text-destructive">
-            INATTIVO
+        {change.local_updated_at && (
+          <span>
+            Aggiornato da noi:{" "}
+            {new Date(change.local_updated_at).toLocaleString()}
           </span>
         )}
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1 text-muted-foreground">
+    </div>
+  );
+}
+
+/** Compact card showing our local repeater state */
+function LocalRepeaterCard({ repeater }: { repeater: RepeaterSummary }) {
+  return (
+    <div className="rounded-md border bg-background p-3 space-y-1.5 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="font-semibold">
+          {repeater.callsign ?? "—"}
+        </span>
+        {repeater.name && (
+          <span className="text-muted-foreground">— {repeater.name}</span>
+        )}
+        {!repeater.is_active && (
+          <Badge variant="destructive" className="text-xs">
+            INATTIVO
+          </Badge>
+        )}
+      </div>
+      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-muted-foreground font-mono">
         <span>
-          {formatFrequency(repeater.frequency_hz)}
+          {fmtFreq(repeater.frequency_hz)}
           {repeater.shift_hz != null && (
-            <span className="ml-1">
-              (shift {repeater.shift_hz > 0 ? "+" : ""}
-              {(repeater.shift_hz / 1_000_000).toFixed(1)})
-            </span>
+            <span className="ml-1">({fmtShift(repeater.shift_hz)})</span>
           )}
         </span>
         {repeater.locality && <span>{repeater.locality}</span>}
-        {repeater.locator && (
-          <span className="font-mono">{repeater.locator}</span>
-        )}
+        {repeater.locator && <span>{repeater.locator}</span>}
       </div>
       {repeater.repeater_access.length > 0 && (
-        <div className="flex flex-wrap gap-1 pt-1">
+        <div className="flex flex-wrap gap-1 pt-0.5">
           {repeater.repeater_access.map((a, i) => (
-            <span
-              key={i}
-              className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
-            >
-              <span className="font-semibold">{a.mode}</span>
-              {a.network?.name && (
-                <span className="text-muted-foreground">{a.network.name}</span>
-              )}
-              {a.ctcss_tx_hz != null && (
-                <span className="text-muted-foreground">
-                  CTCSS {a.ctcss_tx_hz}
-                </span>
-              )}
-              {a.color_code != null && (
-                <span className="text-muted-foreground">
-                  CC{a.color_code}
-                </span>
-              )}
-              {a.node_id != null && (
-                <span className="text-muted-foreground">
-                  #{a.node_id}
-                </span>
-              )}
-            </span>
+            <AccessBadge key={i} access={a} />
           ))}
         </div>
       )}
     </div>
   );
 }
+
+// --- Main table component ---
 
 export function PendingChangesTable({
   changes,
@@ -419,17 +502,12 @@ export function PendingChangesTable({
 
   return (
     <div className="space-y-4">
-      {/* Bulk actions */}
       {selected.size > 0 && (
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
             {selected.size} selezionati
           </span>
-          <Button
-            size="sm"
-            onClick={handleBulkApprove}
-            disabled={isPending}
-          >
+          <Button size="sm" onClick={handleBulkApprove} disabled={isPending}>
             <Check className="mr-1 h-3 w-3" />
             Approva tutti
           </Button>
@@ -461,47 +539,52 @@ export function PendingChangesTable({
               <TableHead>Repeater</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Suggerimento</TableHead>
-              <TableHead>Campi</TableHead>
-              <TableHead>Data</TableHead>
+              <TableHead>Modifiche</TableHead>
+              <TableHead>Data iz8wnh</TableHead>
               <TableHead className="text-right">Azioni</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {changes.map((change) => {
               const isExpanded = expandedRows.has(change.id);
-              const diffKeys = Object.keys(change.diff);
+              const diffKeys = Object.keys(change.diff).filter(
+                (k) => k !== "scope"
+              );
               const localRepeater = change.repeater_id
                 ? repeaterMap[change.repeater_id]
                 : undefined;
 
-              // Build repeater display name from local data or remote data
               const repeaterName = localRepeater
-                ? `${localRepeater.callsign ?? ""} ${localRepeater.name ?? ""}`.trim() || change.external_id
-                : (change.remote_data.Ripetitore as string) ||
-                  (change.remote_data.Identificativo as string) ||
+                ? `${localRepeater.callsign ?? ""} ${localRepeater.name ?? ""}`.trim() ||
+                  change.external_id
+                : (change.remote_data.Identificativo as string) ||
+                  (change.remote_data.Ripetitore as string) ||
                   change.external_id;
 
               const freqDisplay = localRepeater
-                ? formatFrequency(localRepeater.frequency_hz)
+                ? fmtFreq(localRepeater.frequency_hz)
                 : change.remote_data.Frequenza
                   ? `${String(change.remote_data.Frequenza)} MHz`
                   : null;
 
-              // Summary for the "Campi" column
               let fieldsSummary: string;
               if (change.change_type === "new") {
-                fieldsSummary = "Nuovo repeater";
-              } else if (
-                change.change_type === "deactivate" ||
-                change.change_type === "reactivate"
-              ) {
-                fieldsSummary = change.change_type === "deactivate"
-                  ? "Disattivazione"
-                  : "Riattivazione";
+                const tip = change.remote_data.Tipologia;
+                fieldsSummary = `Nuovo ${tip ? String(tip) : "repeater"}`;
+              } else if (change.change_type === "deactivate") {
+                const scope = change.diff.scope?.remote;
+                const tip = change.remote_data.Tipologia;
+                fieldsSummary =
+                  scope === "access"
+                    ? `Rimuovi accesso ${tip ? String(tip) : ""}`
+                    : "Disattiva ripetitore";
+              } else if (change.change_type === "reactivate") {
+                fieldsSummary = "Riattiva ripetitore";
               } else {
-                fieldsSummary = diffKeys.length > 0
-                  ? diffKeys.map((k) => fieldLabel(k)).join(", ")
-                  : "—";
+                fieldsSummary =
+                  diffKeys.length > 0
+                    ? diffKeys.map((k) => fieldLabel(k)).join(", ")
+                    : "—";
               }
 
               return (
@@ -531,26 +614,38 @@ export function PendingChangesTable({
                         <div className="text-xs text-muted-foreground">
                           {freqDisplay}
                           {localRepeater?.locality && (
-                            <span className="ml-2">{localRepeater.locality}</span>
+                            <span className="ml-2">
+                              {localRepeater.locality}
+                            </span>
                           )}
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={CHANGE_TYPE_VARIANT[change.change_type]}>
+                      <Badge
+                        variant={CHANGE_TYPE_VARIANT[change.change_type]}
+                      >
                         {CHANGE_TYPE_LABEL[change.change_type]}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge variant={WINNER_VARIANT[change.suggested_winner] ?? "outline"}>
+                      <Badge
+                        variant={
+                          WINNER_VARIANT[change.suggested_winner] ?? "outline"
+                        }
+                      >
                         {change.suggested_winner}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                    <TableCell className="text-sm text-muted-foreground max-w-[250px] truncate">
                       {fieldsSummary}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm">
-                      {new Date(change.created_at).toLocaleString()}
+                      {change.remote_updated_at
+                        ? new Date(
+                            change.remote_updated_at
+                          ).toLocaleDateString()
+                        : "—"}
                     </TableCell>
                     <TableCell
                       className="text-right"
@@ -580,42 +675,12 @@ export function PendingChangesTable({
                   </TableRow>
 
                   {isExpanded && (
-                    <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableRow className="bg-muted/20 hover:bg-muted/20">
                       <TableCell colSpan={8} className="p-4">
-                        {/* Local repeater info card */}
-                        {localRepeater && (
-                          <RepeaterInfoCard repeater={localRepeater} />
-                        )}
-
-                        {/* Git-style diff based on change type */}
-                        {change.change_type === "new" && (
-                          <NewRepeaterDetail remoteData={change.remote_data} />
-                        )}
-
-                        {change.change_type === "update" && (
-                          <UpdateDiff diff={change.diff} />
-                        )}
-
-                        {(change.change_type === "deactivate" ||
-                          change.change_type === "reactivate") && (
-                          <ActivationDiff change={change} />
-                        )}
-
-                        {/* Timestamps */}
-                        <div className="mt-3 flex gap-4 text-xs text-muted-foreground">
-                          {change.remote_updated_at && (
-                            <span>
-                              Remoto:{" "}
-                              {new Date(change.remote_updated_at).toLocaleString()}
-                            </span>
-                          )}
-                          {change.local_updated_at && (
-                            <span>
-                              Locale:{" "}
-                              {new Date(change.local_updated_at).toLocaleString()}
-                            </span>
-                          )}
-                        </div>
+                        <ChangeDetail
+                          change={change}
+                          localRepeater={localRepeater}
+                        />
                       </TableCell>
                     </TableRow>
                   )}
