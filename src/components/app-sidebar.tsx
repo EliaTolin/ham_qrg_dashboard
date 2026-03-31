@@ -13,6 +13,7 @@ import {
   BarChart3,
   ClipboardCheck,
   Bell,
+  Send,
 } from "lucide-react";
 import {
   Sidebar,
@@ -40,6 +41,12 @@ const managementNav = [
     title: "Reports",
     href: "/reports",
     icon: Flag,
+    roles: ["admin", "bridge_manager"] as AppRole[],
+  },
+  {
+    title: "Submissions",
+    href: "/submissions",
+    icon: Send,
     roles: ["admin", "bridge_manager"] as AppRole[],
   },
 ];
