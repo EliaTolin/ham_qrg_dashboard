@@ -90,6 +90,70 @@ export async function bulkRejectPendingChanges(changeIds: string[]) {
   return { success: true, count: changeIds.length };
 }
 
+export async function approveAllPendingChanges() {
+  const canReview = await hasPermission("sync.review");
+  if (!canReview) return { error: "Non autorizzato" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  // Fetch all pending IDs (paginate to avoid limit)
+  const allIds: string[] = [];
+  let from = 0;
+  const PAGE = 500;
+
+  while (true) {
+    const { data } = await supabase
+      .from(TABLE)
+      .select("id")
+      .eq("status", "pending")
+      .range(from, from + PAGE - 1);
+
+    if (!data || data.length === 0) break;
+    for (const row of data as unknown as { id: string }[]) {
+      allIds.push(row.id);
+    }
+    if (data.length < PAGE) break;
+    from += PAGE;
+  }
+
+  if (allIds.length === 0) return { success: true, count: 0 };
+
+  let applied = 0;
+  let errors = 0;
+
+  for (const id of allIds) {
+    const { data, error } = await supabase.functions.invoke(
+      "apply_pending_change",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          change_id: id,
+          action: "approve",
+          user_id: user?.id,
+        }),
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+    if (error || data?.error) {
+      errors++;
+    } else {
+      applied++;
+    }
+  }
+
+  if (errors > 0) {
+    return {
+      error: `${errors}/${allIds.length} errori durante l'approvazione`,
+      success: false,
+      applied,
+    };
+  }
+  return { success: true, count: applied };
+}
+
 export async function deleteAllPendingChanges() {
   const canReview = await hasPermission("sync.review");
   if (!canReview) return { error: "Non autorizzato" };

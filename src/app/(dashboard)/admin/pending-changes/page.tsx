@@ -8,6 +8,7 @@ import type { SyncPendingChange, PendingChangeType } from "@/lib/types";
 import { PendingChangesTable, type RepeaterSummary } from "./pending-changes-table";
 import { FetchUpdatesButton } from "./fetch-updates-button";
 import { DeleteAllButton } from "./delete-all-button";
+import { ApproveAllButton } from "./approve-all-button";
 import { PendingChangesFilters } from "./pending-changes-filters";
 
 const VALID_TYPES = new Set<string>(["new", "update", "deactivate", "reactivate"]);
@@ -81,6 +82,7 @@ export default async function PendingChangesPage({
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
+            <ApproveAllButton />
             <DeleteAllButton />
             <FetchUpdatesButton />
           </div>
