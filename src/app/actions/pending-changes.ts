@@ -27,7 +27,11 @@ export async function getPendingChanges(status?: string) {
   return { data: (data ?? []) as unknown as SyncPendingChange[] };
 }
 
-async function invokeApply(changeId: string, action: "approve" | "reject") {
+async function invokeApply(
+  changeId: string | undefined,
+  changeIds: string[] | undefined,
+  action: "approve" | "reject",
+) {
   const canReview = await hasPermission("sync.review");
   if (!canReview) return { error: "Non autorizzato" };
 
@@ -42,6 +46,7 @@ async function invokeApply(changeId: string, action: "approve" | "reject") {
       method: "POST",
       body: JSON.stringify({
         change_id: changeId,
+        change_ids: changeIds,
         action,
         user_id: user?.id,
       }),
@@ -51,43 +56,23 @@ async function invokeApply(changeId: string, action: "approve" | "reject") {
 
   if (error) return { error: error.message };
   if (data?.error) return { error: data.error };
-  return { success: true };
+  return { success: true, count: data?.count };
 }
 
 export async function approvePendingChange(changeId: string) {
-  return invokeApply(changeId, "approve");
+  return invokeApply(changeId, undefined, "approve");
 }
 
 export async function rejectPendingChange(changeId: string) {
-  return invokeApply(changeId, "reject");
+  return invokeApply(changeId, undefined, "reject");
 }
 
 export async function bulkApprovePendingChanges(changeIds: string[]) {
-  const results = await Promise.all(
-    changeIds.map((id) => approvePendingChange(id))
-  );
-  const errors = results.filter((r) => r.error);
-  if (errors.length > 0) {
-    return {
-      error: `${errors.length}/${changeIds.length} errori durante l'approvazione`,
-      details: errors,
-    };
-  }
-  return { success: true, count: changeIds.length };
+  return invokeApply(undefined, changeIds, "approve");
 }
 
 export async function bulkRejectPendingChanges(changeIds: string[]) {
-  const results = await Promise.all(
-    changeIds.map((id) => rejectPendingChange(id))
-  );
-  const errors = results.filter((r) => r.error);
-  if (errors.length > 0) {
-    return {
-      error: `${errors.length}/${changeIds.length} errori durante il rifiuto`,
-      details: errors,
-    };
-  }
-  return { success: true, count: changeIds.length };
+  return invokeApply(undefined, changeIds, "reject");
 }
 
 export async function approveAllPendingChanges() {
@@ -95,11 +80,8 @@ export async function approveAllPendingChanges() {
   if (!canReview) return { error: "Non autorizzato" };
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
 
-  // Fetch all pending IDs (paginate to avoid limit)
+  // Fetch all pending IDs (paginated)
   const allIds: string[] = [];
   let from = 0;
   const PAGE = 500;
@@ -121,37 +103,8 @@ export async function approveAllPendingChanges() {
 
   if (allIds.length === 0) return { success: true, count: 0 };
 
-  let applied = 0;
-  let errors = 0;
-
-  for (const id of allIds) {
-    const { data, error } = await supabase.functions.invoke(
-      "apply_pending_change",
-      {
-        method: "POST",
-        body: JSON.stringify({
-          change_id: id,
-          action: "approve",
-          user_id: user?.id,
-        }),
-        headers: { "Content-Type": "application/json" },
-      }
-    );
-    if (error || data?.error) {
-      errors++;
-    } else {
-      applied++;
-    }
-  }
-
-  if (errors > 0) {
-    return {
-      error: `${errors}/${allIds.length} errori durante l'approvazione`,
-      success: false,
-      applied,
-    };
-  }
-  return { success: true, count: applied };
+  // Send all IDs in one call to the edge function
+  return invokeApply(undefined, allIds, "approve");
 }
 
 export async function deleteAllPendingChanges() {

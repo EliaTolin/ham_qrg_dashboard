@@ -12,11 +12,12 @@ import { ApproveAllButton } from "./approve-all-button";
 import { PendingChangesFilters } from "./pending-changes-filters";
 
 const VALID_TYPES = new Set<string>(["new", "update", "deactivate", "reactivate"]);
+const VALID_STATUSES = new Set<string>(["pending", "approved", "rejected"]);
 
 export default async function PendingChangesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; page?: string }>;
+  searchParams: Promise<{ type?: string; page?: string; status?: string }>;
 }) {
   const canReview = await hasPermission("sync.review");
   if (!canReview) redirect("/");
@@ -27,18 +28,21 @@ export default async function PendingChangesPage({
   const PAGE_SIZE = 30;
   const page = Math.max(1, parseInt(params.page ?? "1", 10));
   const from = (page - 1) * PAGE_SIZE;
+  const status = params.status && VALID_STATUSES.has(params.status)
+    ? params.status
+    : "pending";
 
   let query = supabase
     .from("sync_pending_changes" as never)
     .select("*")
-    .eq("status", "pending")
+    .eq("status", status)
     .order("created_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 
   let countQuery = supabase
     .from("sync_pending_changes" as never)
     .select("*", { count: "exact", head: true })
-    .eq("status", "pending");
+    .eq("status", status);
 
   if (params.type && VALID_TYPES.has(params.type)) {
     query = query.eq("change_type", params.type as PendingChangeType);
@@ -68,13 +72,15 @@ export default async function PendingChangesPage({
     }
   }
 
+  const isPending = status === "pending";
+
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <ClipboardCheck className="h-5 w-5" />
-            Pending Changes iz8wnh
+            Sync iz8wnh
             {totalCount > 0 && (
               <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
                 {totalCount}
@@ -82,8 +88,8 @@ export default async function PendingChangesPage({
             )}
           </CardTitle>
           <div className="flex items-center gap-2">
-            <ApproveAllButton />
-            <DeleteAllButton />
+            {isPending && <ApproveAllButton />}
+            {isPending && <DeleteAllButton />}
             <FetchUpdatesButton />
           </div>
         </div>
@@ -103,6 +109,7 @@ export default async function PendingChangesPage({
           page={page}
           totalPages={totalPages}
           totalCount={totalCount}
+          showActions={isPending}
         />
       </CardContent>
     </Card>

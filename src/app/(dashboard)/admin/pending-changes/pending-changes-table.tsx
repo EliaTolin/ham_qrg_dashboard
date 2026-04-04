@@ -411,12 +411,14 @@ export function PendingChangesTable({
   page,
   totalPages,
   totalCount,
+  showActions = true,
 }: {
   changes: SyncPendingChange[];
   repeaterMap: Record<string, RepeaterSummary>;
   page: number;
   totalPages: number;
   totalCount: number;
+  showActions?: boolean;
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -522,14 +524,14 @@ export function PendingChangesTable({
 
   return (
     <div className="space-y-4">
-      {selected.size > 0 && (
+      {showActions && selected.size > 0 && (
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
             {selected.size} selezionati
           </span>
           <Button size="sm" onClick={handleBulkApprove} disabled={isPending}>
             <Check className="mr-1 h-3 w-3" />
-            Approva tutti
+            Approva selezionati
           </Button>
           <Button
             size="sm"
@@ -538,7 +540,7 @@ export function PendingChangesTable({
             disabled={isPending}
           >
             <X className="mr-1 h-3 w-3" />
-            Rifiuta tutti
+            Rifiuta selezionati
           </Button>
         </div>
       )}
@@ -547,21 +549,25 @@ export function PendingChangesTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10">
-                <input
-                  type="checkbox"
-                  checked={selected.size === changes.length}
-                  onChange={toggleSelectAll}
-                  className="rounded"
-                />
-              </TableHead>
+              {showActions && (
+                <TableHead className="w-10">
+                  <input
+                    type="checkbox"
+                    checked={selected.size === changes.length}
+                    onChange={toggleSelectAll}
+                    className="rounded"
+                  />
+                </TableHead>
+              )}
               <TableHead className="w-8" />
               <TableHead>Repeater</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead>Suggerimento</TableHead>
               <TableHead>Modifiche</TableHead>
               <TableHead>Data iz8wnh</TableHead>
-              <TableHead className="text-right">Azioni</TableHead>
+              {showActions && (
+                <TableHead className="text-right">Azioni</TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -613,14 +619,16 @@ export function PendingChangesTable({
                     className="cursor-pointer"
                     onClick={() => toggleExpanded(change.id)}
                   >
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(change.id)}
-                        onChange={() => toggleSelect(change.id)}
-                        className="rounded"
-                      />
-                    </TableCell>
+                    {showActions && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={selected.has(change.id)}
+                          onChange={() => toggleSelect(change.id)}
+                          className="rounded"
+                        />
+                      </TableCell>
+                    )}
                     <TableCell>
                       {isExpanded ? (
                         <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -667,36 +675,38 @@ export function PendingChangesTable({
                           ).toLocaleDateString()
                         : "—"}
                     </TableCell>
-                    <TableCell
-                      className="text-right"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleApprove(change.id)}
-                          disabled={isPending}
-                          title="Approva"
-                        >
-                          <Check className="h-4 w-4 text-green-600" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleReject(change.id)}
-                          disabled={isPending}
-                          title="Rifiuta"
-                        >
-                          <X className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+                    {showActions && (
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleApprove(change.id)}
+                            disabled={isPending}
+                            title="Approva"
+                          >
+                            <Check className="h-4 w-4 text-green-600" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleReject(change.id)}
+                            disabled={isPending}
+                            title="Rifiuta"
+                          >
+                            <X className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
 
                   {isExpanded && (
                     <TableRow className="bg-muted/20 hover:bg-muted/20">
-                      <TableCell colSpan={8} className="p-4">
+                      <TableCell colSpan={showActions ? 8 : 6} className="p-4">
                         <ChangeDetail
                           change={change}
                           localRepeater={localRepeater}
