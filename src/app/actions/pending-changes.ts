@@ -75,6 +75,8 @@ export async function bulkRejectPendingChanges(changeIds: string[]) {
   return invokeApply(undefined, changeIds, "reject");
 }
 
+const CHUNK_SIZE = 50;
+
 export async function approveAllPendingChanges() {
   const canReview = await hasPermission("sync.review");
   if (!canReview) return { error: "Non autorizzato" };
@@ -103,8 +105,28 @@ export async function approveAllPendingChanges() {
 
   if (allIds.length === 0) return { success: true, count: 0 };
 
-  // Send all IDs in one call to the edge function
-  return invokeApply(undefined, allIds, "approve");
+  // Process in chunks to avoid edge function timeout
+  let totalApplied = 0;
+  let totalErrors = 0;
+
+  for (let i = 0; i < allIds.length; i += CHUNK_SIZE) {
+    const chunk = allIds.slice(i, i + CHUNK_SIZE);
+    const result = await invokeApply(undefined, chunk, "approve");
+    if (result.error) {
+      totalErrors += chunk.length;
+    } else {
+      totalApplied += result.count ?? chunk.length;
+    }
+  }
+
+  if (totalErrors > 0) {
+    return {
+      error: `${totalErrors} errori su ${allIds.length} modifiche`,
+      success: false,
+      count: totalApplied,
+    };
+  }
+  return { success: true, count: totalApplied };
 }
 
 export async function deleteAllPendingChanges() {
