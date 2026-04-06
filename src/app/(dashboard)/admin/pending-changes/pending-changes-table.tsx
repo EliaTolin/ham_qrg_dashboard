@@ -30,6 +30,7 @@ import {
   ArrowRight,
   ChevronsLeft,
   ChevronsRight,
+  Loader2,
 } from "lucide-react";
 
 // --- Constants ---
@@ -351,13 +352,13 @@ function ChangeDetail({
         {change.remote_updated_at && (
           <span>
             Aggiornato da iz8wnh:{" "}
-            {new Date(change.remote_updated_at).toLocaleString()}
+            {new Date(change.remote_updated_at).toLocaleString("it-IT")}
           </span>
         )}
         {change.local_updated_at && (
           <span>
             Aggiornato da noi:{" "}
-            {new Date(change.local_updated_at).toLocaleString()}
+            {new Date(change.local_updated_at).toLocaleString("it-IT")}
           </span>
         )}
       </div>
@@ -504,6 +505,8 @@ export function PendingChangesTable({
     });
   };
 
+  const [isPagePending, startPageTransition] = useTransition();
+
   function goToPage(p: number) {
     const params = new URLSearchParams(searchParams.toString());
     if (p <= 1) {
@@ -511,7 +514,9 @@ export function PendingChangesTable({
     } else {
       params.set("page", String(p));
     }
-    router.push(`?${params.toString()}`);
+    startPageTransition(() => {
+      router.push(`?${params.toString()}`);
+    });
   }
 
   if (changes.length === 0) {
@@ -545,7 +550,12 @@ export function PendingChangesTable({
         </div>
       )}
 
-      <div className="rounded-md border">
+      <div className="relative rounded-md border">
+        {isPagePending && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-background/60">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        )}
         <Table>
           <TableHeader>
             <TableRow>
@@ -565,6 +575,7 @@ export function PendingChangesTable({
               <TableHead>Suggerimento</TableHead>
               <TableHead>Modifiche</TableHead>
               <TableHead>Data iz8wnh</TableHead>
+              <TableHead>Creato il</TableHead>
               {showActions && (
                 <TableHead className="text-right">Azioni</TableHead>
               )}
@@ -670,10 +681,11 @@ export function PendingChangesTable({
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-sm">
                       {change.remote_updated_at
-                        ? new Date(
-                            change.remote_updated_at
-                          ).toLocaleDateString()
+                        ? new Date(change.remote_updated_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric" })
                         : "—"}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
+                      {new Date(change.created_at).toLocaleDateString("it-IT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </TableCell>
                     {showActions && (
                       <TableCell
@@ -706,7 +718,7 @@ export function PendingChangesTable({
 
                   {isExpanded && (
                     <TableRow className="bg-muted/20 hover:bg-muted/20">
-                      <TableCell colSpan={showActions ? 8 : 6} className="p-4">
+                      <TableCell colSpan={showActions ? 9 : 7} className="p-4">
                         <ChangeDetail
                           change={change}
                           localRepeater={localRepeater}

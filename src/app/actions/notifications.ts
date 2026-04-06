@@ -17,6 +17,10 @@ export async function sendBroadcastNotification(
     return { error: "Titolo e messaggio in italiano sono obbligatori" };
   }
 
+  if (!titles.en?.trim() || !bodies.en?.trim()) {
+    return { error: "Title and message in English are required (OneSignal)" };
+  }
+
   const supabase = await createClient();
 
   // Build headings/contents: include only non-empty languages, fallback to IT

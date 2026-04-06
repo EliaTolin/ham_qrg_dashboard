@@ -16,6 +16,7 @@ export interface UpdateRepeaterFields {
   locator?: string | null;
   lat?: number | null;
   lon?: number | null;
+  is_active?: boolean;
 }
 
 const LOCATOR_RE = /^[A-R]{2}[0-9]{2}([A-X]{2})?$/i;

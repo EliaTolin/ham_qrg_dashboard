@@ -17,7 +17,7 @@ const VALID_STATUSES = new Set<string>(["pending", "approved", "rejected"]);
 export default async function PendingChangesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; page?: string; status?: string }>;
+  searchParams: Promise<{ type?: string; page?: string; status?: string; q?: string }>;
 }) {
   const canReview = await hasPermission("sync.review");
   if (!canReview) redirect("/");
@@ -47,6 +47,14 @@ export default async function PendingChangesPage({
   if (params.type && VALID_TYPES.has(params.type)) {
     query = query.eq("change_type", params.type as PendingChangeType);
     countQuery = countQuery.eq("change_type", params.type as PendingChangeType);
+  }
+
+  const searchQuery = params.q?.trim();
+  if (searchQuery) {
+    const pattern = `%${searchQuery}%`;
+    const orFilter = `external_id.ilike.${pattern},remote_data->>Identificativo.ilike.${pattern},remote_data->>Ripetitore.ilike.${pattern}`;
+    query = query.or(orFilter);
+    countQuery = countQuery.or(orFilter);
   }
 
   const [{ data, error }, { count }] = await Promise.all([query, countQuery]);

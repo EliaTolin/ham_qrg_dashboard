@@ -16,11 +16,21 @@ export const columns: ColumnDef<RepeaterRow>[] = [
   {
     accessorKey: "repeater.callsign",
     header: "Callsign",
-    cell: ({ row }) => (
-      <span className="font-mono font-medium">
-        {row.original.repeater.callsign ?? "—"}
-      </span>
-    ),
+    cell: ({ row }) => {
+      const isActive = row.original.repeater.is_active !== false;
+      return (
+        <div className="flex items-center gap-2">
+          <span className={`font-mono font-medium ${!isActive ? "text-muted-foreground line-through" : ""}`}>
+            {row.original.repeater.callsign ?? "—"}
+          </span>
+          {!isActive && (
+            <Badge variant="secondary" className="text-xs">
+              Inattivo
+            </Badge>
+          )}
+        </div>
+      );
+    },
   },
   {
     accessorKey: "repeater.frequency_hz",

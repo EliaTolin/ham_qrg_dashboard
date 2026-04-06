@@ -30,7 +30,7 @@ import { sendBroadcastNotification } from "@/app/actions/notifications";
 
 const LANGUAGES = [
   { code: "it", label: "Italiano", flag: "IT", required: true },
-  { code: "en", label: "English", flag: "EN", required: false },
+  { code: "en", label: "English", flag: "EN", required: true },
   { code: "de", label: "Deutsch", flag: "DE", required: false },
   { code: "fr", label: "Français", flag: "FR", required: false },
   { code: "es", label: "Español", flag: "ES", required: false },
@@ -43,10 +43,10 @@ type LangCode = (typeof LANGUAGES)[number]["code"];
 
 export function SendNotificationForm() {
   const router = useRouter();
-  const [titles, setTitles] = useState<Record<string, string>>({ it: "" });
-  const [bodies, setBodies] = useState<Record<string, string>>({ it: "" });
+  const [titles, setTitles] = useState<Record<string, string>>({ it: "", en: "" });
+  const [bodies, setBodies] = useState<Record<string, string>>({ it: "", en: "" });
   const [enabledLangs, setEnabledLangs] = useState<Set<LangCode>>(
-    new Set(["it"])
+    new Set(["it", "en"])
   );
   const [sending, setSending] = useState(false);
 
@@ -90,16 +90,18 @@ export function SendNotificationForm() {
       toast.error(result.error);
     } else {
       toast.success("Notifica inviata a tutti gli utenti");
-      setTitles({ it: "" });
-      setBodies({ it: "" });
-      setEnabledLangs(new Set(["it"]));
+      setTitles({ it: "", en: "" });
+      setBodies({ it: "", en: "" });
+      setEnabledLangs(new Set(["it", "en"]));
       router.refresh();
     }
   }
 
   const canSend =
     (titles.it?.trim().length ?? 0) > 0 &&
-    (bodies.it?.trim().length ?? 0) > 0;
+    (bodies.it?.trim().length ?? 0) > 0 &&
+    (titles.en?.trim().length ?? 0) > 0 &&
+    (bodies.en?.trim().length ?? 0) > 0;
 
   const optionalLangs = LANGUAGES.filter((l) => !l.required);
   const activeLangs = LANGUAGES.filter((l) => enabledLangs.has(l.code));

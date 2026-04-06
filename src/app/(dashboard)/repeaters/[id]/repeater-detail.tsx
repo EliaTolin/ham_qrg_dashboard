@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -12,6 +13,7 @@ import {
   Plus,
   Pencil,
   Trash2,
+  Power,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +31,7 @@ import { toast } from "sonner";
 import { RepeaterAlerts } from "./repeater-alerts";
 import { RepeaterEditForm } from "./repeater-edit-form";
 import { AccessDialog } from "./access-dialog";
-import { deleteAccess } from "@/app/actions/repeaters";
+import { deleteAccess, updateRepeater } from "@/app/actions/repeaters";
 import type {
   Repeater,
   RepeaterAccessWithNetwork,
@@ -86,6 +88,24 @@ export function RepeaterDetail({
   networks,
 }: RepeaterDetailProps) {
   const router = useRouter();
+  const [togglingActive, setTogglingActive] = useState(false);
+
+  async function handleToggleActive() {
+    setTogglingActive(true);
+    const result = await updateRepeater(repeater.id, {
+      is_active: !repeater.is_active,
+    });
+    setTogglingActive(false);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(
+        repeater.is_active ? "Ripetitore disattivato" : "Ripetitore riattivato"
+      );
+      router.refresh();
+    }
+  }
+
   // Group feedback by access ID
   const feedbackByAccess = new Map<string, RepeaterFeedbackWithRelations[]>();
   for (const fb of feedback) {
@@ -93,6 +113,8 @@ export function RepeaterDetail({
     list.push(fb);
     feedbackByAccess.set(fb.repeater_access_id, list);
   }
+
+  const isActive = repeater.is_active !== false;
 
   return (
     <div className="space-y-6">
@@ -104,14 +126,34 @@ export function RepeaterDetail({
           </Link>
         </Button>
         <div>
-          <h2 className="text-2xl font-bold">
-            {repeater.callsign ?? "Unknown"}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold">
+              {repeater.callsign ?? "Unknown"}
+            </h2>
+            {!isActive && (
+              <Badge variant="secondary">Inattivo</Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
             {repeater.name ?? repeater.locality ?? ""}
           </p>
         </div>
         <div className="ml-auto flex items-center gap-4">
+          {canEdit && (
+            <Button
+              variant={isActive ? "outline" : "default"}
+              size="sm"
+              onClick={handleToggleActive}
+              disabled={togglingActive}
+            >
+              <Power className="mr-2 h-3.5 w-3.5" />
+              {togglingActive
+                ? "..."
+                : isActive
+                  ? "Disattiva"
+                  : "Riattiva"}
+            </Button>
+          )}
           {feedbackStats && (
             <div className="flex items-center gap-3 text-sm">
               <span className="flex items-center gap-1 text-green-600">

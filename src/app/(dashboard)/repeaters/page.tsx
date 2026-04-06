@@ -31,6 +31,7 @@ export default async function RepeatersPage({
       p_query: params.q,
       p_limit: 500,
       p_access_modes: params.mode ? [params.mode] : undefined,
+      p_include_inactive: true,
     });
 
     if (searchResults) {
