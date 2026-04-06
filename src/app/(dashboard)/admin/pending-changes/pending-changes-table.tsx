@@ -187,6 +187,32 @@ function AccessBadge({
   );
 }
 
+/** Collapsible raw JSON data section */
+function RawDataSection({ data }: { data: Record<string, unknown> }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setOpen((v) => !v)}
+      >
+        {open ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
+        Dato raw iz8wnh
+      </button>
+      {open && (
+        <pre className="mt-1 max-h-64 overflow-auto rounded-md border bg-muted/30 p-3 text-xs font-mono">
+          {JSON.stringify(data, null, 2)}
+        </pre>
+      )}
+    </div>
+  );
+}
+
 /** Full expanded detail for a pending change */
 function ChangeDetail({
   change,
@@ -230,6 +256,7 @@ function ChangeDetail({
             ) : null
           )}
         </div>
+        <RawDataSection data={rd} />
       </div>
     );
   }
@@ -293,6 +320,7 @@ function ChangeDetail({
             </p>
           )}
         </div>
+        <RawDataSection data={rd} />
       </div>
     );
   }
@@ -346,6 +374,8 @@ function ChangeDetail({
           </div>
         </>
       )}
+
+      <RawDataSection data={rd} />
 
       {/* Timestamps */}
       <div className="flex gap-4 text-xs text-muted-foreground pt-1">
