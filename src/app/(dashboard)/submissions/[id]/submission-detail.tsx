@@ -76,6 +76,8 @@ interface SubmissionRecord {
   notes: string | null;
   status: SubmissionStatus;
   created_at: string;
+  coordinator_response: string | null;
+  responded_at: string | null;
 }
 
 interface Props {
@@ -405,7 +407,23 @@ export function SubmissionDetail({
         ))}
       </div>
 
-      {/* Gestione stato */}
+      {/* Risposta coordinatore (read-only se non canManage) */}
+      {submission.coordinator_response && !canManage && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Risposta coordinatore</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md bg-muted/50 p-3">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                {submission.coordinator_response}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Gestione stato + risposta */}
       {canManage && (
         <Card>
           <CardHeader className="pb-3">
@@ -415,6 +433,8 @@ export function SubmissionDetail({
             <SubmissionStatusSelect
               submissionId={submission.id}
               currentStatus={submission.status}
+              currentResponse={submission.coordinator_response}
+              showResponseField
             />
           </CardContent>
         </Card>

@@ -8,7 +8,8 @@ export type SubmissionStatus = "pending" | "approved" | "rejected";
 
 export async function updateSubmissionStatus(
   submissionId: string,
-  status: SubmissionStatus
+  status: SubmissionStatus,
+  coordinatorResponse?: string | null
 ) {
   const canManage = await hasPermission("reports.manage");
   if (!canManage) {
@@ -16,10 +17,23 @@ export async function updateSubmissionStatus(
   }
 
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase as any)
     .from("repeater_submissions")
-    .update({ status })
+    .update({
+      status,
+      coordinator_response: coordinatorResponse ?? null,
+      responded_at:
+        coordinatorResponse || status !== "pending"
+          ? new Date().toISOString()
+          : null,
+      responded_by: user?.id ?? null,
+    })
     .eq("id", submissionId);
 
   if (error) {

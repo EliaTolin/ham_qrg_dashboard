@@ -79,6 +79,7 @@ export default async function SubmissionsPage({
               <TableHead>Località</TableHead>
               <TableHead>Accessi</TableHead>
               <TableHead>Segnalato da</TableHead>
+              <TableHead>Risposta</TableHead>
               <TableHead>Stato</TableHead>
               <TableHead>Data</TableHead>
             </TableRow>
@@ -120,6 +121,9 @@ export default async function SubmissionsPage({
                         .join(" ") ||
                       "Anonimo")}
                   </TableCell>
+                  <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
+                    {sub.coordinator_response ?? "—"}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -136,7 +140,7 @@ export default async function SubmissionsPage({
             })}
             {(!submissions || submissions.length === 0) && (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={8} className="h-24 text-center">
                   Nessuna segnalazione trovata.
                 </TableCell>
               </TableRow>
