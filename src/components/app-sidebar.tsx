@@ -14,6 +14,7 @@ import {
   ClipboardCheck,
   Bell,
   Send,
+  Activity,
 } from "lucide-react";
 import {
   Sidebar,
@@ -33,6 +34,7 @@ const mainNav = [
   { title: "Repeaters", href: "/repeaters", icon: Radio },
   { title: "Networks", href: "/networks", icon: Network },
   { title: "Map", href: "/map", icon: Map },
+  { title: "Spots", href: "/spots", icon: Activity },
   { title: "Stats", href: "/stats", icon: BarChart3 },
 ];
 

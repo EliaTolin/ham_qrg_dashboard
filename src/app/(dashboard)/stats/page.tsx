@@ -19,6 +19,7 @@ import {
   ThumbsDown,
   Flag,
   Radio,
+  Activity,
 } from "lucide-react";
 
 function Stat({
@@ -58,6 +59,7 @@ export default async function StatsPage() {
     { count: favoriteCount },
     { count: reportCount },
     { count: repeaterCount },
+    { count: spotCount },
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -81,6 +83,9 @@ export default async function StatsPage() {
       .select("*", { count: "exact", head: true }),
     supabase
       .from("repeaters")
+      .select("*", { count: "exact", head: true }),
+    supabase
+      .from("repeater_spots" as never)
       .select("*", { count: "exact", head: true }),
   ]);
 
@@ -144,6 +149,11 @@ export default async function StatsPage() {
         <Stat title="Like" value={totalLikes} icon={ThumbsUp} color="bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400" />
         <Stat title="Down" value={totalDowns} icon={ThumbsDown} color="bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400" />
         <Stat title="Segnalazioni" value={reportCount ?? 0} icon={Flag} color="bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400" />
+      </div>
+
+      {/* Spot */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <Stat title="Spot totali" value={spotCount ?? 0} icon={Activity} color="bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-400" />
       </div>
 
       <Separator />

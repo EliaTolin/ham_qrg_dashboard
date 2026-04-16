@@ -41,6 +41,22 @@ export type RepeaterReportWithProfile = RepeaterReport & {
   profiles: Pick<Profile, "first_name" | "last_name" | "callsign"> | null;
 };
 
+// Manual type — repeater_spots is not in generated types
+export interface RepeaterSpot {
+  id: string;
+  user_id: string;
+  repeater_id: string;
+  access_id: string | null;
+  callsign_snapshot: string;
+  spotted_callsign: string | null;
+  started_at: string;
+  duration_minutes: number | null;
+  expires_at: string | null;
+  closed_at: string | null;
+  closed_by: string | null;
+  created_at: string;
+}
+
 // Manual type — sync_pending_changes is not in generated types
 export type PendingChangeStatus = "pending" | "approved" | "rejected";
 export type PendingChangeType = "update" | "new" | "deactivate" | "reactivate";
