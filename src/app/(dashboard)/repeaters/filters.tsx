@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useTransition } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { Search, X } from "lucide-react";
+import { Loader2, Search, X } from "lucide-react";
 
 const ACCESS_MODES = [
   "ANALOG",
@@ -32,6 +32,7 @@ export function Filters() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [query, setQuery] = useState(searchParams.get("q") ?? "");
+  const [isPending, startTransition] = useTransition();
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -44,7 +45,9 @@ export function Filters() {
         }
       });
       params.delete("page");
-      router.push(`?${params.toString()}`);
+      startTransition(() => {
+        router.push(`?${params.toString()}`);
+      });
     },
     [router, searchParams]
   );
@@ -56,7 +59,9 @@ export function Filters() {
 
   function clearFilters() {
     setQuery("");
-    router.push("/repeaters");
+    startTransition(() => {
+      router.push("/repeaters");
+    });
   }
 
   const hasFilters =
@@ -67,7 +72,11 @@ export function Filters() {
     <div className="flex flex-wrap items-center gap-3">
       <form onSubmit={handleSearch} className="flex items-center gap-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          {isPending ? (
+            <Loader2 className="absolute left-2.5 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+          ) : (
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          )}
           <Input
             placeholder="Cerca per callsign, nome, frequenza, localita'..."
             value={query}
@@ -75,8 +84,15 @@ export function Filters() {
             className="w-80 pl-9"
           />
         </div>
-        <Button type="submit" variant="secondary" size="sm">
-          Cerca
+        <Button type="submit" variant="secondary" size="sm" disabled={isPending}>
+          {isPending ? (
+            <>
+              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+              Ricerca...
+            </>
+          ) : (
+            "Cerca"
+          )}
         </Button>
       </form>
 

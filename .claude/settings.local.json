@@ -14,7 +14,8 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(npx shadcn@latest add:*)",
-      "Bash(ls /Users/eliatolin/Desktop/Aurora/Progetti/HamQRG/ham_qrg_dashboard/src/app/\\\\\\(dashboard\\\\\\)/repeaters/[id]/)"
+      "Bash(ls /Users/eliatolin/Desktop/Aurora/Progetti/HamQRG/ham_qrg_dashboard/src/app/\\\\\\(dashboard\\\\\\)/repeaters/[id]/)",
+      "Bash(pnpm lint *)"
     ],
     "additionalDirectories": [
       "/Users/eliatolin/Desktop/Aurora/Progetti/HamQRG/ham_qrg_supabase/supabase/migrations"
