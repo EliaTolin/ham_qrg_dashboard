@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { hasPermission } from "@/lib/rbac";
+import { parseFrequencyQuery } from "@/lib/parse-frequency-query";
 import { DataTable } from "./data-table";
 import { columns } from "./columns";
 import { Filters } from "./filters";
@@ -26,11 +27,15 @@ export default async function RepeatersPage({
   let count = 0;
 
   if (params.q) {
+    const freqRange = parseFrequencyQuery(params.q);
+
     // Search mode: fetch a large batch from the RPC then paginate client-side
     const { data: searchResults } = await supabase.rpc("search_repeaters", {
       p_query: params.q,
       p_limit: 500,
       p_access_modes: params.mode ? [params.mode] : undefined,
+      p_freq_min_hz: freqRange?.minHz,
+      p_freq_max_hz: freqRange?.maxHz,
       p_include_inactive: true,
     });
 
