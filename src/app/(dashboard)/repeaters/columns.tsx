@@ -19,16 +19,27 @@ export const columns: ColumnDef<RepeaterRow>[] = [
     cell: ({ row }) => {
       const isActive = row.original.repeater.is_active !== false;
       return (
-        <div className="flex items-center gap-2">
-          <span className={`font-mono font-medium ${!isActive ? "text-muted-foreground line-through" : ""}`}>
-            {row.original.repeater.callsign ?? "—"}
-          </span>
-          {!isActive && (
-            <Badge variant="secondary" className="text-xs">
-              Inattivo
-            </Badge>
-          )}
-        </div>
+        <span className={`font-mono font-medium ${!isActive ? "text-muted-foreground line-through" : ""}`}>
+          {row.original.repeater.callsign ?? "—"}
+        </span>
+      );
+    },
+  },
+  {
+    id: "status",
+    accessorKey: "repeater.is_active",
+    header: "Stato",
+    cell: ({ row }) => {
+      const isActive = row.original.repeater.is_active !== false;
+      return isActive ? (
+        <Badge
+          variant="outline"
+          className="border-emerald-500/40 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+        >
+          Attivo
+        </Badge>
+      ) : (
+        <Badge variant="secondary">Inattivo</Badge>
       );
     },
   },

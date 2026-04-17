@@ -8,7 +8,7 @@ export default function RepeatersLoading() {
         <Skeleton className="h-9 w-64" />
         <Skeleton className="h-9 w-40" />
       </div>
-      <TableSkeleton columns={7} rows={10} />
+      <TableSkeleton columns={8} rows={10} />
     </div>
   );
 }
