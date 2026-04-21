@@ -14,6 +14,7 @@ import {
   Pencil,
   Trash2,
   Power,
+  ClipboardCheck,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { toast } from "sonner";
 import { RepeaterAlerts } from "./repeater-alerts";
 import { RepeaterEditForm } from "./repeater-edit-form";
 import { AccessDialog } from "./access-dialog";
+import { RepeaterPendingChanges } from "./repeater-pending-changes";
 import { deleteAccess, updateRepeater } from "@/app/actions/repeaters";
 import type {
   Repeater,
@@ -39,6 +41,7 @@ import type {
   RepeaterFeedbackWithRelations,
   RepeaterReportWithProfile,
   Network,
+  SyncPendingChange,
 } from "@/lib/types";
 
 const STATION_LABELS: Record<string, string> = {
@@ -74,7 +77,9 @@ interface RepeaterDetailProps {
   reports: RepeaterReportWithProfile[];
   canEdit: boolean;
   canManageReports: boolean;
+  canReviewSync: boolean;
   networks: Network[];
+  pendingChanges: SyncPendingChange[];
 }
 
 export function RepeaterDetail({
@@ -85,7 +90,9 @@ export function RepeaterDetail({
   reports,
   canEdit,
   canManageReports,
+  canReviewSync,
   networks,
+  pendingChanges,
 }: RepeaterDetailProps) {
   const router = useRouter();
   const [togglingActive, setTogglingActive] = useState(false);
@@ -115,6 +122,8 @@ export function RepeaterDetail({
   }
 
   const isActive = repeater.is_active !== false;
+  const pendingCount = pendingChanges.filter((c) => c.status === "pending").length;
+  const showSyncTab = canReviewSync && pendingChanges.length > 0;
 
   return (
     <div className="space-y-6">
@@ -186,6 +195,17 @@ export function RepeaterDetail({
             <MessageSquare className="h-4 w-4" />
             Feedback ({feedback.length})
           </TabsTrigger>
+          {showSyncTab && (
+            <TabsTrigger value="sync" className="gap-1.5">
+              <ClipboardCheck className="h-4 w-4" />
+              Sync iz8wnh ({pendingChanges.length})
+              {pendingCount > 0 && (
+                <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-[10px] leading-none text-primary-foreground">
+                  {pendingCount}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Tab: General */}
@@ -423,6 +443,13 @@ export function RepeaterDetail({
             </Card>
           ))}
         </TabsContent>
+
+        {/* Tab: Sync iz8wnh pending changes */}
+        {showSyncTab && (
+          <TabsContent value="sync" className="space-y-3">
+            <RepeaterPendingChanges changes={pendingChanges} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

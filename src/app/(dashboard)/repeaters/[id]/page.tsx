@@ -7,6 +7,7 @@ import type {
   RepeaterFeedbackWithRelations,
   RepeaterReportWithProfile,
   Network,
+  SyncPendingChange,
 } from "@/lib/types";
 
 export default async function RepeaterDetailPage({
@@ -53,10 +54,22 @@ export default async function RepeaterDetailPage({
 
   if (!repeater) notFound();
 
-  const [canEdit, canManageReports] = await Promise.all([
+  const [canEdit, canManageReports, canReviewSync] = await Promise.all([
     hasPermission("repeaters.write"),
     hasPermission("reports.manage"),
+    hasPermission("sync.review"),
   ]);
+
+  let pendingChanges: SyncPendingChange[] = [];
+  if (canReviewSync) {
+    const { data: pendingRows } = await supabase
+      .from("sync_pending_changes" as never)
+      .select("*")
+      .eq("repeater_id", id)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    pendingChanges = (pendingRows ?? []) as unknown as SyncPendingChange[];
+  }
 
   const accesses: RepeaterAccessWithNetwork[] = (accessRows ?? []).map(
     (a) => {
@@ -78,7 +91,9 @@ export default async function RepeaterDetailPage({
       reports={reports}
       canEdit={canEdit}
       canManageReports={canManageReports}
+      canReviewSync={canReviewSync}
       networks={networks}
+      pendingChanges={pendingChanges}
     />
   );
 }
