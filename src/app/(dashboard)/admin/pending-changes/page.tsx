@@ -12,7 +12,7 @@ import { ApproveAllButton } from "./approve-all-button";
 import { PendingChangesFilters } from "./pending-changes-filters";
 
 const VALID_TYPES = new Set<string>(["new", "update", "deactivate", "reactivate"]);
-const VALID_STATUSES = new Set<string>(["pending", "approved", "rejected"]);
+const VALID_STATUSES = new Set<string>(["pending", "approved", "rejected", "all"]);
 
 export default async function PendingChangesPage({
   searchParams,
@@ -35,14 +35,17 @@ export default async function PendingChangesPage({
   let query = supabase
     .from("sync_pending_changes" as never)
     .select("*")
-    .eq("status", status)
     .order("created_at", { ascending: false })
     .range(from, from + PAGE_SIZE - 1);
 
   let countQuery = supabase
     .from("sync_pending_changes" as never)
-    .select("*", { count: "exact", head: true })
-    .eq("status", status);
+    .select("*", { count: "exact", head: true });
+
+  if (status !== "all") {
+    query = query.eq("status", status);
+    countQuery = countQuery.eq("status", status);
+  }
 
   if (params.type && VALID_TYPES.has(params.type)) {
     query = query.eq("change_type", params.type as PendingChangeType);

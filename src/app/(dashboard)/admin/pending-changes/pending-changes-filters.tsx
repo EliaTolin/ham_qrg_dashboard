@@ -18,6 +18,7 @@ const STATUS_OPTIONS = [
   { value: "pending", label: "In attesa" },
   { value: "approved", label: "Approvati" },
   { value: "rejected", label: "Rifiutati" },
+  { value: "all", label: "Tutti" },
 ] as const;
 
 export function PendingChangesFilters() {
