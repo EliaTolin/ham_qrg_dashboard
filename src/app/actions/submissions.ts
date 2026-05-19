@@ -76,6 +76,31 @@ interface SubmissionAccess {
   notes?: string | null;
 }
 
+export interface ExistingRepeaterMatch {
+  id: string;
+  callsign: string | null;
+  name: string | null;
+  locality: string | null;
+  province_code: string | null;
+}
+
+export async function findExistingRepeaterByFrequencyAndLocator(
+  frequencyHz: number,
+  locator: string | null
+): Promise<ExistingRepeaterMatch | null> {
+  if (!locator || !locator.trim()) return null;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("repeaters")
+    .select("id, callsign, name, locality, province_code")
+    .eq("frequency_hz", frequencyHz)
+    .eq("locator", locator.trim())
+    .maybeSingle();
+
+  return data ?? null;
+}
+
 export async function approveAndCreateRepeater(
   submissionId: string,
   repeaterFields: {
@@ -90,37 +115,47 @@ export async function approveAndCreateRepeater(
     lon?: number | null;
     locator?: string | null;
   },
-  accesses: SubmissionAccess[]
+  accesses: SubmissionAccess[],
+  options?: { mergeIntoRepeaterId?: string }
 ) {
   const canWrite = await hasPermission("repeaters.write");
   if (!canWrite) return { error: "Non autorizzato" };
 
   const supabase = await createClient();
 
-  // 1. Crea il ripetitore
-  const { data: repeater, error: repError } = await supabase
-    .from("repeaters")
-    .insert({
-      callsign: repeaterFields.callsign ?? null,
-      name: repeaterFields.name ?? null,
-      frequency_hz: repeaterFields.frequency_hz,
-      shift_hz: repeaterFields.shift_hz ?? null,
-      region: repeaterFields.region ?? null,
-      province_code: repeaterFields.province_code ?? null,
-      locality: repeaterFields.locality ?? null,
-      lat: repeaterFields.lat ?? null,
-      lon: repeaterFields.lon ?? null,
-      locator: repeaterFields.locator ?? null,
-      source: "submission",
-    })
-    .select("id")
-    .single();
+  let repeaterId: string;
 
-  if (repError || !repeater) {
-    return { error: repError?.message ?? "Errore creazione ripetitore" };
+  if (options?.mergeIntoRepeaterId) {
+    repeaterId = options.mergeIntoRepeaterId;
+  } else {
+    // 1. Crea il ripetitore
+    const { data: repeater, error: repError } = await supabase
+      .from("repeaters")
+      .insert({
+        callsign: repeaterFields.callsign ?? null,
+        name: repeaterFields.name ?? null,
+        frequency_hz: repeaterFields.frequency_hz,
+        shift_hz: repeaterFields.shift_hz ?? null,
+        region: repeaterFields.region ?? null,
+        province_code: repeaterFields.province_code ?? null,
+        locality: repeaterFields.locality ?? null,
+        lat: repeaterFields.lat ?? null,
+        lon: repeaterFields.lon ?? null,
+        locator: repeaterFields.locator ?? null,
+        source: "submission",
+      })
+      .select("id")
+      .single();
+
+    if (repError || !repeater) {
+      return { error: repError?.message ?? "Errore creazione ripetitore" };
+    }
+    repeaterId = repeater.id;
   }
 
-  // 2. Risolvi network_name → network_id e crea accessi
+  // 2. Risolvi network_name → network_id e crea accessi.
+  // I duplicati esatti sono bloccati dall'indice repeater_access_dedup_unique
+  // (PG error 23505) — in merge mode è normale, li ignoriamo silenziosamente.
   for (const access of accesses) {
     let networkId: string | null = null;
 
@@ -133,20 +168,26 @@ export async function approveAndCreateRepeater(
       networkId = network?.id ?? null;
     }
 
-    await supabase.from("repeater_access").insert({
-      repeater_id: repeater.id,
-      mode: access.mode as AccessMode,
-      ctcss_tx_hz: access.ctcss_tx_hz ?? null,
-      ctcss_rx_hz: access.ctcss_rx_hz ?? null,
-      dcs_code: access.dcs_code ?? null,
-      color_code: access.color_code ?? null,
-      talkgroup: access.talkgroup ?? null,
-      dg_id: access.dg_id ?? null,
-      node_id: access.node_id ?? null,
-      network_id: networkId,
-      notes: access.notes ?? null,
-      source: "submission",
-    });
+    const { error: accessError } = await supabase
+      .from("repeater_access")
+      .insert({
+        repeater_id: repeaterId,
+        mode: access.mode as AccessMode,
+        ctcss_tx_hz: access.ctcss_tx_hz ?? null,
+        ctcss_rx_hz: access.ctcss_rx_hz ?? null,
+        dcs_code: access.dcs_code ?? null,
+        color_code: access.color_code ?? null,
+        talkgroup: access.talkgroup ?? null,
+        dg_id: access.dg_id ?? null,
+        node_id: access.node_id ?? null,
+        network_id: networkId,
+        notes: access.notes ?? null,
+        source: "submission",
+      });
+
+    if (accessError && accessError.code !== "23505") {
+      return { error: accessError.message };
+    }
   }
 
   // 3. Aggiorna status della submission
@@ -156,5 +197,9 @@ export async function approveAndCreateRepeater(
     .update({ status: "approved" })
     .eq("id", submissionId);
 
-  return { success: true, repeaterId: repeater.id };
+  return {
+    success: true,
+    repeaterId,
+    merged: Boolean(options?.mergeIntoRepeaterId),
+  };
 }

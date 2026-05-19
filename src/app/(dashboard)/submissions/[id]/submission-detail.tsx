@@ -31,7 +31,9 @@ import { SubmissionStatusSelect } from "../submission-status-select";
 import {
   deleteSubmission,
   approveAndCreateRepeater,
+  findExistingRepeaterByFrequencyAndLocator,
   type SubmissionStatus,
+  type ExistingRepeaterMatch,
 } from "@/app/actions/submissions";
 import { formatFrequency, formatShift, formatCtcss } from "@/lib/format";
 import { getModeColor } from "@/lib/mode-colors";
@@ -102,6 +104,8 @@ export function SubmissionDetail({
   const router = useRouter();
   const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [duplicateMatch, setDuplicateMatch] =
+    useState<ExistingRepeaterMatch | null>(null);
 
   // Prefill form state from submission data
   const [callsign, setCallsign] = useState(submission.callsign ?? "");
@@ -148,42 +152,79 @@ export function SubmissionDetail({
     }
   }
 
-  async function handleApproveAndCreate() {
+  function parseRepeaterFields() {
     const freqHz = Math.round(parseFloat(frequencyMhz) * 1_000_000);
     if (isNaN(freqHz) || freqHz <= 0) {
       toast.error("Frequenza non valida");
-      return;
+      return null;
     }
 
     const shiftHz = shiftMhz.trim()
       ? Math.round(parseFloat(shiftMhz) * 1_000_000)
       : null;
 
+    return {
+      callsign: callsign.trim() || null,
+      name: name.trim() || null,
+      frequency_hz: freqHz,
+      shift_hz: shiftHz,
+      region: region.trim() || null,
+      province_code: provinceCode.trim() || null,
+      locality: locality.trim() || null,
+      lat: lat.trim() ? parseFloat(lat) : null,
+      lon: lon.trim() ? parseFloat(lon) : null,
+      locator: locator.trim() || null,
+    };
+  }
+
+  async function runApprove(mergeIntoRepeaterId?: string) {
+    const fields = parseRepeaterFields();
+    if (!fields) return;
+
     setCreating(true);
     const result = await approveAndCreateRepeater(
       submission.id,
-      {
-        callsign: callsign.trim() || null,
-        name: name.trim() || null,
-        frequency_hz: freqHz,
-        shift_hz: shiftHz,
-        region: region.trim() || null,
-        province_code: provinceCode.trim() || null,
-        locality: locality.trim() || null,
-        lat: lat.trim() ? parseFloat(lat) : null,
-        lon: lon.trim() ? parseFloat(lon) : null,
-        locator: locator.trim() || null,
-      },
-      accesses
+      fields,
+      accesses,
+      mergeIntoRepeaterId ? { mergeIntoRepeaterId } : undefined
     );
     setCreating(false);
+    setDuplicateMatch(null);
 
     if (result?.error) {
       toast.error(result.error);
-    } else {
-      toast.success("Ripetitore creato e segnalazione approvata");
-      router.push(`/repeaters/${result.repeaterId}`);
+      return;
     }
+
+    toast.success(
+      result.merged
+        ? "Accessi aggiunti al ripetitore esistente e segnalazione approvata"
+        : "Ripetitore creato e segnalazione approvata"
+    );
+    router.push(`/repeaters/${result.repeaterId}`);
+  }
+
+  async function handleApproveAndCreate() {
+    const fields = parseRepeaterFields();
+    if (!fields) return;
+
+    // Pre-flight check: blocca duplicati su (frequency_hz, locator) prima della
+    // INSERT, così l'utente può scegliere fra merge accessi e annullamento
+    // invece di vedere l'errore della unique constraint.
+    if (fields.locator) {
+      setCreating(true);
+      const existing = await findExistingRepeaterByFrequencyAndLocator(
+        fields.frequency_hz,
+        fields.locator
+      );
+      setCreating(false);
+      if (existing) {
+        setDuplicateMatch(existing);
+        return;
+      }
+    }
+
+    await runApprove();
   }
 
   const isPending = submission.status === "pending";
@@ -582,6 +623,62 @@ export function SubmissionDetail({
           </CardContent>
         </Card>
       )}
+
+      <AlertDialog
+        open={duplicateMatch !== null}
+        onOpenChange={(open) => {
+          if (!open) setDuplicateMatch(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Ripetitore già esistente</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  Esiste già un ripetitore con la stessa frequenza e locator:
+                </p>
+                {duplicateMatch && (
+                  <div className="rounded-md border bg-muted/40 p-3 text-sm">
+                    <p className="font-mono font-medium">
+                      {duplicateMatch.callsign ?? "—"}
+                    </p>
+                    {duplicateMatch.name && (
+                      <p className="mt-0.5">{duplicateMatch.name}</p>
+                    )}
+                    {(duplicateMatch.locality ||
+                      duplicateMatch.province_code) && (
+                      <p className="mt-0.5 text-muted-foreground">
+                        {[
+                          duplicateMatch.locality,
+                          duplicateMatch.province_code,
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    )}
+                  </div>
+                )}
+                <p>
+                  Vuoi aggiungere gli accessi della segnalazione al ripetitore
+                  esistente? I duplicati esatti verranno ignorati.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={creating}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (duplicateMatch) runApprove(duplicateMatch.id);
+              }}
+              disabled={creating}
+            >
+              {creating ? "In corso..." : "Aggiungi accessi al ripetitore"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
