@@ -282,7 +282,11 @@ export function ChangeDetail({
             ["Rete", rd.Rete],
             ["Località", rd.Localita],
             ["Locator", rd.Locator],
-            ["Coordinate", rd.Lat && rd.Long ? `${rd.Lat}, ${rd.Long}` : null],
+            ["Coordinate",
+              rd.Lat != null && rd.Lat !== "" && rd.Long != null && rd.Long !== ""
+                ? `${rd.Lat}, ${rd.Long}`
+                : null,
+            ],
             ["Ultima modifica", rd.Ultima_Modifica],
           ].map(([label, value]) =>
             value ? (
